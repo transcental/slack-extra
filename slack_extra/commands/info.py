@@ -69,7 +69,7 @@ async def info_handler(
                                     trust_factor = ":question: Unknown"
                             res += f"- :clock1: *Hackatime Trust Factor:* {trust_factor} _(<{joe}|Joe>)_\n"
                         else:
-                            res += "- :clock1: *Hackatime Trust Factor:* N/A _(<{joe}|Joe>)_\n"
+                            res += f"- :clock1: *Hackatime Trust Factor:* N/A _(<{joe}|Joe>)_\n"
                 except Exception:
                     res += "- :clock1: *Hackatime Trust Factor:* N/A\n"
             else:
