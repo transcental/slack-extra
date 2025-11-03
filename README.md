@@ -73,7 +73,7 @@ Slack. Enhanced.
 
 3. Start the application:
    ```
-   slackpp
+   slack_extra
    ```
 
 Your Slack app should now be running and connected to your Slack workspace!

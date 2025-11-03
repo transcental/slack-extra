@@ -9,9 +9,23 @@ class SlackConfig(BaseSettings):
     heartbeat_channel: str | None = None
 
 
+class AirtableNDABaseConfig(BaseSettings):
+    base_id: str
+    table_id: str
+    view_id: str
+    api_key: str
+
+
+class AirtableConfig(BaseSettings):
+    nda: AirtableNDABaseConfig
+
+
 class Config(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_nested_delimiter="__", extra="ignore"
+    )
     slack: SlackConfig
+    airtable: AirtableConfig
     environment: str = "development"
     port: int = 3000
 

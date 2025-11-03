@@ -3,7 +3,7 @@ import logging
 
 import uvicorn
 
-from slackpp.config import config
+from slack_extra.config import config
 
 try:
     import uvloop
@@ -17,7 +17,7 @@ logging.basicConfig(level="DEBUG" if config.environment != "production" else "IN
 
 def start():
     uvicorn.run(
-        "slackpp.utils.starlette:app",
+        "slack_extra.utils.starlette:app",
         host="0.0.0.0",
         port=config.port,
         log_level="info" if config.environment != "production" else "warning",

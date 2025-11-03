@@ -1,11 +1,13 @@
 [project]
-name = "slackpp"
+name = "slack_extra"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.11.14",
+    "blockkit>=2.1.2",
+    "pyairtable>=3.2.0",
     "pydantic-settings>=2.11.0",
     "python-dotenv>=1.1.0",
     "slack-bolt>=1.23.0",
@@ -15,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-slackpp = "slackpp.__main__:start"
+slack_extra = "slack_extra.__main__:start"
 
 [build-system]
 requires = ["hatchling"]

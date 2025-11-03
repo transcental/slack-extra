@@ -4,11 +4,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from slackpp.config import config
-from slackpp.env import env
-from slackpp.utils.slack import app as slack_app
+from slack_extra.config import config
+from slack_extra.env import env
 
-req_handler = AsyncSlackRequestHandler(slack_app)
+req_handler = AsyncSlackRequestHandler(env.app)
 
 
 async def endpoint(req: Request):

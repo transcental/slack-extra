@@ -1,25 +1,42 @@
 {
     "display_information": {
-        "name": "My Slack App",
-        "description": "Slack app that does cool things!",
-        "background_color": "#d45443"
+        "name": "Dev Slack Extra",
+        "description": "Convenient features you wish were built into Slack",
+        "background_color": "#e02510"
     },
     "features": {
         "bot_user": {
-            "display_name": "Amber's App",
+            "display_name": "Dev Slack Extra",
             "always_online": false
-        }
+        },
+        "slash_commands": [
+            {
+                "command": "/dev- se",
+                "description": "[DEV] Extra features you wish Slack had",
+                "should_escape": true
+            }
+        ]
     },
     "oauth_config": {
         "scopes": {
+            "user": [
+                "users.profile:write"
+            ],
             "bot": [
                 "chat:write",
+                "commands",
+                "users:read",
+                "users:read.email",
+                "users.profile:read"
             ]
         }
     },
     "settings": {
+        "interactivity": {
+            "is_enabled": true
+        },
         "org_deploy_enabled": false,
-        "socket_mode_enabled": false,
+        "socket_mode_enabled": true,
         "token_rotation_enabled": false
     }
 }
