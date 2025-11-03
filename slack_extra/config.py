@@ -12,7 +12,6 @@ class SlackConfig(BaseSettings):
 class AirtableNDABaseConfig(BaseSettings):
     base_id: str
     table_id: str
-    view_id: str
     api_key: str
 
 

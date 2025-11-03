@@ -87,7 +87,6 @@ async def info_handler(
             api = Api(api_key=config.airtable.nda.api_key)
             table = api.table(config.airtable.nda.base_id, config.airtable.nda.table_id)
             nda_records = table.all(
-                view=config.airtable.nda.view_id,
                 formula=f"{{Email}} = '{email}'",
                 fields=["Email", "Signed?"],
             )
