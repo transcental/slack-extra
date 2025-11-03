@@ -5,6 +5,7 @@ import shlex
 from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncApp
 from slack_bolt.async_app import AsyncRespond
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.commands.info import info_handler
@@ -266,63 +267,119 @@ def register_commands(app: AsyncApp):
                                     )
                                     continue
                             elif ptype == "user":
-                                # Normalize Slack mention formats like <@U123ABC|name> to the user id and validate.
-                                # Also support passing an email address: if an email is provided, look up the user id
-                                # via the Slack API and, if present, make the raw email available to handlers via
-                                # a parameter named 'email'.
+                                # Accept Slack mention/ID or email. Prefer resolving emails first so
+                                # addresses like 'user@domain' don't get mistaken for a raw user ID.
                                 if not isinstance(raw_val, str):
                                     errors.append(
                                         f"Parameter '{pname}' must be a user mention, ID, or email (e.g. <@U123ABC|name> or user@example.com)."
                                     )
                                     continue
-                                norm = _normalize_user_token(raw_val)
-                                logging.debug(
-                                    f"Normalized user token '{raw_val}' to '{norm}'"
-                                )
-                                # After normalization, ensure we have a Slack-style user id (starts with U or W)
-                                if norm and re.match(r"^[UW][A-Z0-9]+$", norm):
-                                    value = norm
-                                else:
-                                    # If the raw value looks like an email address, attempt to resolve it via the Slack API.
-                                    if "@" in raw_val:
-                                        email = raw_val.strip()
-                                        try:
-                                            resp = await client.users_lookupByEmail(
-                                                email=email
-                                            )
-                                            user_obj = (
-                                                resp.get("user")
-                                                if isinstance(resp, dict)
-                                                else None
-                                            )
-                                            uid = (
-                                                user_obj.get("id")
-                                                if isinstance(user_obj, dict)
-                                                else None
-                                            )
+                                raw_val_str = raw_val.strip()
+                                # If it looks like an email address, try to resolve via Slack API first.
+                                if "@" in raw_val_str and re.match(
+                                    r"^[^@\s]+@[^@\s]+\.[^@\s]+$", raw_val_str
+                                ):
+                                    email = raw_val_str
+                                    try:
+                                        resp = await client.users_lookupByEmail(
+                                            email=email
+                                        )
+                                        # resp may be a SlackResponse-like object or a dict; normalize to a dict-like variable.
+                                        data = (
+                                            getattr(resp, "data", resp)
+                                            if resp is not None
+                                            else {}
+                                        )
+                                        if isinstance(data, dict):
+                                            # Prefer explicit user field when present.
+                                            user_obj = data.get("user") or {}
+                                            uid = user_obj.get("id")
                                             logging.debug(
-                                                f"Lookup by email '{email}' returned user id '{uid}'"
+                                                f"Lookup by email '{email}' returned: {uid} (raw response: {data})"
                                             )
                                             if uid and re.match(
                                                 r"^[UW][A-Z0-9]+$", uid
                                             ):
                                                 value = uid
-                                                # Make the email available to handlers that accept an `email` parameter.
-                                                # Handlers that do not declare `email` will ignore this extra kwarg later.
+                                                # Store the original email so handlers that declare `email` can receive it.
                                                 kwargs_for_params["email"] = email
+                                            else:
+                                                # No user id in response: try to fall back to token normalization
+                                                norm = _normalize_user_token(
+                                                    raw_val_str
+                                                )
+                                                if norm and re.match(
+                                                    r"^[UW][A-Z0-9]+$", norm
+                                                ):
+                                                    value = norm
+                                                else:
+                                                    api_err = None
+                                                    if data.get("ok") is False:
+                                                        api_err = data.get("error")
+                                                    if api_err:
+                                                        errors.append(
+                                                            f"Could not find Slack user for email '{email}': {api_err}"
+                                                        )
+                                                    else:
+                                                        errors.append(
+                                                            f"Could not find a Slack user for email '{email}'."
+                                                        )
+                                                    continue
+                                        else:
+                                            # Unexpected response type; log and fail with a clear message.
+                                            logging.debug(
+                                                f"Unexpected response type for users_lookupByEmail: {resp}"
+                                            )
+                                            norm = _normalize_user_token(raw_val_str)
+                                            if norm and re.match(
+                                                r"^[UW][A-Z0-9]+$", norm
+                                            ):
+                                                value = norm
                                             else:
                                                 errors.append(
                                                     f"Could not find a Slack user for email '{email}'."
                                                 )
                                                 continue
-                                        except Exception as e:
-                                            logging.debug(
-                                                f"Error looking up user by email '{raw_val}': {e}"
-                                            )
+                                    except SlackApiError as e:
+                                        # SlackApiError often contains a response dict with an 'error' key.
+                                        api_err = None
+                                        try:
+                                            if hasattr(e, "response") and isinstance(
+                                                e.response, dict
+                                            ):
+                                                api_err = e.response.get("error")
+                                        except Exception:
+                                            api_err = None
+                                        if api_err:
                                             errors.append(
-                                                f"Could not find a Slack user for email '{raw_val}'."
+                                                f"Slack API error looking up email '{email}': {api_err}"
                                             )
-                                            continue
+                                        else:
+                                            errors.append(
+                                                f"Slack API error looking up email '{email}': {e}"
+                                            )
+                                        continue
+                                    except Exception as e:
+                                        logging.exception(
+                                            "Error looking up user by email"
+                                        )
+                                        # Last-resort: try normalizing as a Slack token before failing entirely.
+                                        norm = _normalize_user_token(raw_val_str)
+                                        if norm and re.match(r"^[UW][A-Z0-9]+$", norm):
+                                            value = norm
+                                        else:
+                                            errors.append(
+                                                f"Error looking up Slack user for email '{raw_val_str}': {e}"
+                                            )
+                                        continue
+                                else:
+                                    # Not an email-looking token: try normalizing Slack mention/ID
+                                    norm = _normalize_user_token(raw_val_str)
+                                    logging.debug(
+                                        f"Normalized user token '{raw_val}' to '{norm}'"
+                                    )
+                                    if norm and re.match(r"^[UW][A-Z0-9]+$", norm):
+                                        value = norm
                                     else:
                                         errors.append(
                                             f"Parameter '{pname}' must be a user mention, ID, or email (e.g. <@U123ABC|name> or user@example.com)."

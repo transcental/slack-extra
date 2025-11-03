@@ -75,6 +75,7 @@ async def info_handler(
             else:
                 res += "- Could not fetch user info from Slack API.\n"
 
+        if email and user:
             async with env.http.get(
                 IDENTITY_ENDPOINT, params={"slack_id": user}
             ) as id_resp:
@@ -82,7 +83,15 @@ async def info_handler(
                     id_data = await id_resp.json()
                     res += f"- :bust_in_silhouette: *IDV:* {id_data.get('result').replace('_', ' ').capitalize()}\n"
                 else:
-                    res += "- :bust_in_silhouette: *IDV:- N/A\n"
+                    async with env.http.get(
+                        IDENTITY_ENDPOINT, params={"email": email}
+                    ) as id_resp:
+                        if id_resp.status == 200:
+                            id_data = await id_resp.json()
+                            res += f"- :bust_in_silhouette: *IDV:* {id_data.get('result').replace('_', ' ').capitalize()}\n"
+                        else:
+                            res += "- :bust_in_silhouette: *IDV:- N/A\n"
+
         if email:
             api = Api(api_key=config.airtable.nda.api_key)
             table = api.table(config.airtable.nda.base_id, config.airtable.nda.table_id)
