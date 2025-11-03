@@ -15,4 +15,4 @@ EXPOSE 3000
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["app"]
+CMD ["slack_extra"]
