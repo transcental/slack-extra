@@ -12,6 +12,8 @@ class SlackConfig(BaseSettings):
     client_id: str
     client_secret: str
     redirect_uri: str
+    xoxc_token: str
+    xoxd_token: str
 
 
 class AirtableNDABaseConfig(BaseSettings):

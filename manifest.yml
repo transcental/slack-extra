@@ -9,6 +9,14 @@
             "display_name": "Dev Slack Extra",
             "always_online": false
         },
+        "shortcuts": [
+            {
+                "name": "DEV Delete message",
+                "type": "message",
+                "callback_id": "delete_message",
+                "description": "Delete this bot message from your channel"
+            }
+        ],
         "slash_commands": [
             {
                 "command": "/dev-se",
@@ -23,15 +31,20 @@
         ],
         "scopes": {
             "user": [
-                "users.profile:write"
+                "users.profile:write",
+                "chat:write"
             ],
             "bot": [
+                "channels:read",
                 "chat:write",
                 "commands",
+                "groups:read",
+                "mpim:read",
+                "team:read",
                 "users.profile:read",
                 "users:read",
                 "users:read.email",
-                "team:read"
+                "im:read"
             ]
         }
     },

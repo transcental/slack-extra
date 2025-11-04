@@ -9,6 +9,7 @@ from starlette.applications import Starlette
 
 from slack_extra.commands import register_commands
 from slack_extra.config import config
+from slack_extra.shortcuts import register_shortcuts
 from slack_extra.utils.logging import send_heartbeat
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class Environment:
             await handler.connect_async()
 
         register_commands(env.app)
+        register_shortcuts(env.app)
 
         logger.debug(f"Environment setup in {time() - st:.02}s")
         await send_heartbeat(
