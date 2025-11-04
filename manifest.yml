@@ -11,13 +11,16 @@
         },
         "slash_commands": [
             {
-                "command": "/dev- se",
-                "description": "[DEV] Extra features you wish Slack had",
+                "command": "/dev-se",
+                "description": "Development SE commands",
                 "should_escape": true
             }
         ]
     },
     "oauth_config": {
+        "redirect_urls": [
+            "https://cassiopeia3000.transcental.dev/slack/oauth_redirect"
+        ],
         "scopes": {
             "user": [
                 "users.profile:write"
@@ -25,9 +28,10 @@
             "bot": [
                 "chat:write",
                 "commands",
+                "users.profile:read",
                 "users:read",
                 "users:read.email",
-                "users.profile:read"
+                "team:read"
             ]
         }
     },
