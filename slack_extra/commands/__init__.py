@@ -12,6 +12,7 @@ from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.manager import manager_handler
+from slack_extra.commands.move import move_handler
 from slack_extra.config import config
 
 
@@ -119,6 +120,25 @@ COMMANDS = [
                 "name": "manager",
                 "type": "user",
                 "description": "Manager to add or remove",
+                "required": True,
+            },
+        ],
+    },
+    {
+        "name": "move",
+        "description": "Add members of one channel to another channel",
+        "function": move_handler,
+        "parameters": [
+            {
+                "name": "start",
+                "type": "channel",
+                "description": "Origin channel with all the users in",
+                "required": True,
+            },
+            {
+                "name": "end",
+                "type": "channel",
+                "description": "End channel that users will be moved to",
                 "required": True,
             },
         ],

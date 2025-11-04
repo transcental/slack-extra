@@ -35,16 +35,23 @@
                 "chat:write"
             ],
             "bot": [
+                "channels:manage",
                 "channels:read",
+                "channels:write.invites",
                 "chat:write",
                 "commands",
                 "groups:read",
+                "groups:write",
+                "groups:write.invites",
+                "im:read",
+                "im:write",
                 "mpim:read",
+                "mpim:write",
                 "team:read",
                 "users.profile:read",
                 "users:read",
                 "users:read.email",
-                "im:read"
+                "channels:join"
             ]
         }
     },
