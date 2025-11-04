@@ -11,6 +11,7 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.commands.info import info_handler
+from slack_extra.commands.manager import manager_handler
 from slack_extra.config import config
 
 
@@ -102,6 +103,26 @@ COMMANDS = [
             },
         ],
     },
+    {
+        "name": "manager",
+        "description": "Manage your managers",
+        "function": manager_handler,
+        "parameters": [
+            {
+                "name": "action",
+                "type": "choice",
+                "choices": ["add", "remove"],
+                "description": "Action to perform",
+                "required": True,
+            },
+            {
+                "name": "manager",
+                "type": "user",
+                "description": "Manager to add or remove",
+                "required": True,
+            },
+        ],
+    },
 ]
 
 
@@ -174,10 +195,6 @@ def register_commands(app: AsyncApp):
 
             if cmd.get("admin") and user_id != "U054VC2KM9P":
                 await respond("You do not have permission to use this command.")
-                return
-
-            if not cmd.get("function"):
-                await respond(f"The `{command_name}` command is not yet implemented.")
                 return
 
             parsed = tokens[1:]
@@ -387,6 +404,11 @@ def register_commands(app: AsyncApp):
 
             # Prepare handler kwargs
             handler = cmd["function"]
+
+            if not handler:
+                await respond(f"The `{command_name}` command is not yet implemented.")
+                return
+
             sig = inspect.signature(handler)
             handler_kwargs: dict[str, Any] = {
                 "ack": ack,

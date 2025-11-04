@@ -1,12 +1,17 @@
+from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
 
 
 class SlackConfig(BaseSettings):
     bot_token: str
+    user_token: str
     signing_secret: str
     app_token: str | None = None
     heartbeat_channel: str | None = None
+    client_id: str
+    client_secret: str
+    redirect_uri: str
 
 
 class AirtableNDABaseConfig(BaseSettings):
@@ -25,6 +30,7 @@ class Config(BaseSettings):
     )
     slack: SlackConfig
     airtable: AirtableConfig
+    database_url: PostgresDsn
     environment: str = "development"
     port: int = 3000
 
