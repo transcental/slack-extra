@@ -365,7 +365,7 @@ def register_commands(app: AsyncApp):
                     elif ptype == "channel":
                         if not isinstance(raw_val, str):
                             errors.append(
-                                f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C123ABC|name>)."
+                                f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C0266FRGT>)."
                             )
                             continue
                         chan = _normalize_channel_token(raw_val)
@@ -373,7 +373,7 @@ def register_commands(app: AsyncApp):
                             value = chan
                         else:
                             errors.append(
-                                f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C123ABC|name>)."
+                                f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C06R5NKVCG5>)."
                             )
                             continue
 
