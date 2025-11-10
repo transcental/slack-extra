@@ -50,7 +50,7 @@ class Environment:
 
         logger.debug(f"Environment setup in {time() - st:.02}s")
         await send_heartbeat(
-            ":neodog_nom_stick: beep boop! online!",
+            "yo yo! slack extra reporting for action :my-little-pony-salute:",
             client=self.slack_client,
         )
 
