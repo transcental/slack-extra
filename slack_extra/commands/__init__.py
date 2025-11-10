@@ -215,7 +215,7 @@ def register_commands(app: AsyncApp):
         await ack()
         user_id = command.get("user_id")
         raw_text = command.get("text", "")
-        ran = f"\n_You ran `{COMMAND_PREFIX} {raw_text}`_"
+        ran = f"\n_You ran `{COMMAND_PREFIX} {raw_text}`_" if raw_text else ""
 
         try:
             tokens = shlex.split(raw_text, posix=True) if raw_text else []
