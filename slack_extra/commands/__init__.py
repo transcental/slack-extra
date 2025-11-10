@@ -13,6 +13,7 @@ from slack_sdk.web.async_client import AsyncWebClient
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.manager import manager_handler
 from slack_extra.commands.move import move_handler
+from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
 
 
@@ -141,6 +142,19 @@ COMMANDS = [
                 "description": "End channel that users will be moved to",
                 "required": True,
             },
+        ],
+    },
+    {
+        "name": "spoiler",
+        "description": "Send a message hidden behind a spoiler button",
+        "function": spoiler_handler,
+        "parameters": [
+            {
+                "name": "spoiler",
+                "type": "string",
+                "description": "Text to hide!",
+                "required": False,
+            }
         ],
     },
 ]
@@ -443,6 +457,10 @@ def register_commands(app: AsyncApp):
                 for pname, pvalue in kwargs_for_params.items():
                     if pname in sig.parameters:
                         handler_kwargs[pname] = pvalue
+            if "command" in sig.parameters:
+                handler_kwargs["command"] = command
+            if "channel" in sig.parameters:
+                handler_kwargs["channel"] = command.get("channel_id")
 
             await handler(**handler_kwargs)
             return
