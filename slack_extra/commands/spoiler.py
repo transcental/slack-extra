@@ -60,12 +60,14 @@ async def spoiler_handler(
 
         message = (
             Message().add_block(
-                Section(text=new_text).accessory(
+                Section(text=new_text)
+                .accessory(
                     Button()
                     .text(f"View {'spoiler' if len(spoilers) == 1 else 'spoilers'}")
                     .action_id("view_spoiler")
                     .value("metadata")
                 )
+                .text(new_text)
             )
         ).build()
 
