@@ -22,8 +22,9 @@ async def spoiler_handler(
     spoiler: Optional[str] = None,
 ):
     await ack()
-    ran = f"_You ran `{raw_command}`_"
+    ran = f"\n_You ran `{raw_command}`_"
     text = spoiler
+    bold = True
 
     try:
         channel_info = await client.conversations_info(channel=channel)
@@ -56,9 +57,9 @@ async def spoiler_handler(
             for phrase in spoilers:
                 new_text = new_text.replace(f"||{phrase}||", "`[spoiler hidden]`")
         else:
-            return await respond(
-                f"how do you expect me to spoiler text without spoilers :disappointed:{ran}"
-            )
+            new_text = "`[spoiler hidden]`"
+            spoilers = [text]
+            bold = False
 
         message = (
             Message().add_block(
@@ -74,7 +75,7 @@ async def spoiler_handler(
         ).build()
 
         parsed_text = text.replace("||", "")
-        if "*" not in parsed_text:
+        if "*" not in parsed_text and bold:
             for phrase in spoilers:
                 parsed_text = parsed_text.replace(phrase, f"*{phrase}*")
         message["metadata"] = {
