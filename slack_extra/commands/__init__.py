@@ -218,7 +218,10 @@ def register_commands(app: AsyncApp):
         ran = f"\n_You ran `{COMMAND_PREFIX} {raw_text}`_" if raw_text else ""
 
         try:
-            tokens = shlex.split(raw_text, posix=True) if raw_text else []
+            lexer = shlex.shlex(raw_text or "", posix=True)
+            lexer.whitespace_split = True
+            lexer.quotes = '"'
+            tokens = list(lexer) if raw_text else []
         except ValueError as e:
             await respond(f"Could not parse command text: {e}{ran}")
             return
