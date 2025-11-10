@@ -28,7 +28,7 @@ async def spoiler_handler(
     except SlackApiError as e:
         if e.response["error"] == "channel_not_found":
             await respond(
-                "i couldn't find that channel :(\ntry making sure i'm still in the channel?"
+                "i couldn't find that channel :(\ntry making sure i'm in the channel?"
             )
             return
         elif e.response["error"] == "not_in_channel":
