@@ -16,12 +16,15 @@ async def move_handler(
     performer: str,
     start: str,
     end: str,
+    raw_command: str,
 ):
+    await ack()
+    ran = f"_You ran `{raw_command}`_"
     manage_start = await is_channel_manager(performer, start)
     manage_end = await is_channel_manager(performer, end)
     if not (manage_start and manage_end):
         return await respond(
-            "You need to be a channel manager of both channels to move users"
+            f"You need to be a channel manager of both channels to move users{ran}"
         )
 
     finished = False
@@ -33,13 +36,13 @@ async def move_handler(
         for c in channels:
             r = await client.conversations_join(channel=c)
             if not r.get("ok"):
-                await respond(f"Failed to join <#{c} - `{r.get('error')}`")
+                await respond(f"Failed to join <#{c} - `{r.get('error')}`{ran}")
     except Exception as e:
         tb = traceback.format_exception(e)
 
         tb_str = "".join(tb)
         await respond(
-            f"Something went wrong trying to join the channels\n```{tb_str}```"
+            f"Something went wrong trying to join the channels\n```{tb_str}```{ran}"
         )
     await respond(f"Fetching members from <#{start}>...")
     while not finished:

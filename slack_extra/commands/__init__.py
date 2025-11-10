@@ -215,11 +215,12 @@ def register_commands(app: AsyncApp):
         await ack()
         user_id = command.get("user_id")
         raw_text = command.get("text", "")
+        ran = f"\n_You ran `{COMMAND_PREFIX} {raw_text}`_"
 
         try:
             tokens = shlex.split(raw_text, posix=True) if raw_text else []
         except ValueError as e:
-            await respond(f"Could not parse command text: {e}")
+            await respond(f"Could not parse command text: {e}{ran}")
             return
 
         command_name = tokens[0] if tokens else ""
@@ -228,7 +229,7 @@ def register_commands(app: AsyncApp):
                 continue
 
             if cmd.get("admin") and user_id != "U054VC2KM9P":
-                await respond("You do not have permission to use this command.")
+                await respond(f"You do not have permission to use this command.{ran}")
                 return
 
             parsed = tokens[1:]
@@ -433,14 +434,16 @@ def register_commands(app: AsyncApp):
                 kwargs_for_params[pname] = value
 
             if errors:
-                await respond("; ".join(errors))
+                await respond("; ".join(errors) + ran)
                 return
 
             # Prepare handler kwargs
             handler = cmd["function"]
 
             if not handler:
-                await respond(f"The `{command_name}` command is not yet implemented.")
+                await respond(
+                    f"The `{command_name}` command is not yet implemented.{ran}"
+                )
                 return
 
             sig = inspect.signature(handler)
@@ -459,6 +462,8 @@ def register_commands(app: AsyncApp):
                         handler_kwargs[pname] = pvalue
             if "command" in sig.parameters:
                 handler_kwargs["command"] = command
+            if "raw_command" in sig.parameters:
+                handler_kwargs["raw_command"] = f"{COMMAND_PREFIX} {raw_text}"
             if "channel" in sig.parameters:
                 handler_kwargs["channel"] = command.get("channel_id")
 
@@ -469,4 +474,6 @@ def register_commands(app: AsyncApp):
         final_help = help
         if is_admin:
             final_help += "\n*Admin Commands:*\n" + admin_help
-        await respond(final_help)
+
+        msg = final_help + ran
+        await respond(msg)

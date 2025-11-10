@@ -85,6 +85,7 @@ async def manager_add_handler(
     respond: AsyncRespond,
     performer: str,
     manager: str,
+    ran: str,
 ):
     await ack()
 
@@ -108,7 +109,7 @@ async def manager_add_handler(
             await respond(
                 f"⚠️ You are a workspace admin/owner and need to authorize with OAuth to edit your profile.\n\n"
                 f"Click here to authorize: <{oauth_url}|Authorize App>\n\n"
-                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope._"
+                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope._{ran}"
             )
             return
 
@@ -117,7 +118,7 @@ async def manager_add_handler(
     current_managers = await _get_current_managers(client, user)
 
     if manager in current_managers:
-        await respond(f"<@{manager}> is already one of your managers.")
+        await respond(f"<@{manager}> is already one of your managers.{ran}")
         return
 
     updated_managers = current_managers + [manager]
@@ -125,11 +126,9 @@ async def manager_add_handler(
     success = await _update_managers(client, user, updated_managers, user_token)
 
     if success:
-        await respond(f"✅ Successfully added <@{manager}> as your manager.")
+        await respond(f"added <@{manager}> as your manager!")
     else:
-        await respond(
-            "❌ Failed to add manager. You may not have the necessary permissions to edit your profile."
-        )
+        await respond(f"i failed to add your manager. {ran}")
 
 
 async def manager_remove_handler(
@@ -138,6 +137,7 @@ async def manager_remove_handler(
     respond: AsyncRespond,
     performer: str,
     manager: str,
+    ran: str,
 ):
     await ack()
 
@@ -161,7 +161,7 @@ async def manager_remove_handler(
             await respond(
                 f"⚠️ You are a workspace admin/owner and need to authorize with OAuth to edit your profile.\n\n"
                 f"Click here to authorize: <{oauth_url}|Authorize App>\n\n"
-                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope._"
+                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope._{ran}"
             )
             return
 
@@ -171,7 +171,7 @@ async def manager_remove_handler(
     logging.debug(f"{manager} vs {current_managers}")
 
     if manager not in current_managers:
-        await respond(f"<@{manager}> is not one of your managers.")
+        await respond(f"<@{manager}> is not one of your managers.{ran}")
         return
 
     updated_managers = [m for m in current_managers if m != manager]
@@ -179,11 +179,9 @@ async def manager_remove_handler(
     success = await _update_managers(client, user, updated_managers, user_token)
 
     if success:
-        await respond(f"✅ Successfully removed <@{manager}> as your manager.")
+        await respond(f"removed <@{manager}> as your manager.")
     else:
-        await respond(
-            "❌ Failed to remove manager. You may not have the necessary permissions to edit your profile."
-        )
+        await respond(f"i couldn't remove your manager :({ran}")
 
 
 async def manager_handler(
@@ -193,11 +191,10 @@ async def manager_handler(
     performer: str,
     action: str,
     manager: str,
+    raw_command: str,
 ):
+    ran = f"\n_You ran `{raw_command}`_"
     if action == "add":
-        await manager_add_handler(ack, client, respond, performer, manager)
+        await manager_add_handler(ack, client, respond, performer, manager, ran)
     elif action == "remove":
-        await manager_remove_handler(ack, client, respond, performer, manager)
-    else:
-        await ack()
-        await respond(f"Invalid action: {action}. Use 'add' or 'remove'.")
+        await manager_remove_handler(ack, client, respond, performer, manager, ran)

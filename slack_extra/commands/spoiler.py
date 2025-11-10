@@ -18,9 +18,11 @@ async def spoiler_handler(
     respond: AsyncRespond,
     performer: str,
     channel: str,
+    raw_command: str,
     spoiler: Optional[str] = None,
 ):
     await ack()
+    ran = f"_You ran `{raw_command}`_"
     text = spoiler
 
     try:
@@ -28,13 +30,13 @@ async def spoiler_handler(
     except SlackApiError as e:
         if e.response["error"] == "channel_not_found":
             await respond(
-                "i couldn't find that channel :(\ntry making sure i'm in the channel?"
+                f"i couldn't find that channel :(\ntry making sure i'm in the channel?{ran}"
             )
             return
         elif e.response["error"] == "not_in_channel":
             channel_info = await client.conversations_join(channel=channel)
         else:
-            await respond("oops, something went wrong fetching that channel!")
+            await respond(f"oops, something went wrong fetching that channel!{ran}")
             await send_heartbeat(
                 heartbeat="Error in spoiler_handler",
                 messages=[f"Error details: {e.response['error']}"],
@@ -43,7 +45,7 @@ async def spoiler_handler(
 
     in_channel = channel_info.get("channel", {}).get("is_channel", False)
     if not in_channel:
-        await respond("I need access to the channel! Please add me :3")
+        await respond(f"I need access to the channel! Please add me :3{ran}")
         return
 
     if text:
@@ -55,7 +57,7 @@ async def spoiler_handler(
                 new_text = new_text.replace(f"||{phrase}||", "`[spoiler hidden]`")
         else:
             return await respond(
-                "how do you expect me to spoiler text without spoilers :disappointed:"
+                f"how do you expect me to spoiler text without spoilers :disappointed:{ran}"
             )
 
         message = (
