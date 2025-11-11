@@ -1,9 +1,7 @@
-from pyairtable import Api
 from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncRespond
 from slack_sdk.web.async_client import AsyncWebClient
 
-from slack_extra.config import config
 
 HACKATIME_ENDPOINT = "https://hackatime.hackclub.com/api/v1/users/slackid/trust_factor"
 IDENTITY_ENDPOINT = "https://identity.hackclub.com/api/external/check"
@@ -92,25 +90,25 @@ async def info_handler(
                         else:
                             res += "- :bust_in_silhouette: *IDV:- N/A\n"
 
-        if email:
-            api = Api(api_key=config.airtable.nda.api_key)
-            table = api.table(config.airtable.nda.base_id, config.airtable.nda.table_id)
-            nda_records = table.all(
-                formula=f"{{Email}} = '{email}'",
-                fields=["Email", "Signed?"],
-            )
-            if nda_records:
-                record_url = ""
-                for record in nda_records:
-                    record_url = f"https://airtable.com/{config.airtable.nda.base_id}/{config.airtable.nda.table_id}/{record.get('id')}"
-                    signed = record.get("fields", {}).get("Signed?", False)
-                    if signed:
-                        res += f"- :tw_shield: *NDA Signed:* Yes _(<{record_url}|View on Airtable>)_\n"
-                        break
-                else:
-                    res += f"- :tw_shield: *NDA Signed:* Sent but not signed _(<{record_url}|View on Airtable>)_\n"
-            else:
-                res += "- :tw_shield: *NDA Signed:* No record found\n"
+        # if email:
+        #     api = Api(api_key=config.airtable.nda.api_key)
+        #     table = api.table(config.airtable.nda.base_id, config.airtable.nda.table_id)
+        #     nda_records = table.all(
+        #         formula=f"{{Email}} = '{email}'",
+        #         fields=["Email", "Signed?"],
+        #     )
+        #     if nda_records:
+        #         record_url = ""
+        #         for record in nda_records:
+        #             record_url = f"https://airtable.com/{config.airtable.nda.base_id}/{config.airtable.nda.table_id}/{record.get('id')}"
+        #             signed = record.get("fields", {}).get("Signed?", False)
+        #             if signed:
+        #                 res += f"- :tw_shield: *NDA Signed:* Yes _(<{record_url}|View on Airtable>)_\n"
+        #                 break
+        #         else:
+        #             res += f"- :tw_shield: *NDA Signed:* Sent but not signed _(<{record_url}|View on Airtable>)_\n"
+        #     else:
+        #         res += "- :tw_shield: *NDA Signed:* No record found\n"
 
     blocks = []
     blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": res}})
