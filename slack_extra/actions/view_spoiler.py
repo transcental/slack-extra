@@ -36,15 +36,30 @@ async def view_spoiler_handler(
                         text="i couldn't find that message :(\ntry making sure i'm still in the channel?",
                     )
                     return
-                elif e.response["error"] == "not_in_channel":
-                    await client.conversations_join(channel=channel)
-                    message = await client.conversations_history(
-                        oldest=ts,
-                        channel=channel,
-                        inclusive=True,
-                        limit=1,
-                        include_all_metadata=True,
-                    )
+                elif (
+                    e.response["error"] == "not_in_channel"
+                    or e.response["error"] == "channel_not_found"
+                ):
+                    try:
+                        await client.conversations_join(channel=channel)
+                        message = await client.conversations_history(
+                            oldest=ts,
+                            channel=channel,
+                            inclusive=True,
+                            limit=1,
+                            include_all_metadata=True,
+                        )
+                    except SlackApiError as e:
+                        await client.chat_postMessage(
+                            channel=user_id,
+                            text=f"you tried to access a spoiler in <#{channel}> but i'm not there! please add me and try again :)",
+                        )
+
+                        await send_heartbeat(
+                            heartbeat="Error in view_spoiler_handler",
+                            messages=[f"Error details: {e.response['error']}"],
+                        )
+                        return
                 else:
                     await client.chat_postEphemeral(
                         channel=channel,
