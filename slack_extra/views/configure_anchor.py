@@ -41,6 +41,7 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
                 },
                 token=user_token,
             )
+            await client.pins_add(channel=channel, timestamp=msg["ts"])
             anchor_config = AnchorConfig(
                 channel_id=channel,
                 message=rich_text_value,
@@ -68,6 +69,7 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
                     },
                     token=user_token,
                 )
+                await client.pins_add(channel=channel, timestamp=msg["ts"])
                 await anchor_config.update(
                     {
                         AnchorConfig.message: rich_text_value,

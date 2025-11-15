@@ -55,7 +55,8 @@
                 "channels:history",
                 "groups:history",
                 "chat:write.public",
-                "chat:write.customize"
+                "chat:write.customize",
+                "pins:write"
             ]
         }
     },

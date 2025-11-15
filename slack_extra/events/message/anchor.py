@@ -68,3 +68,5 @@ async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient
     await AnchorConfig.update({AnchorConfig.message_ts: msg["ts"]}).where(
         AnchorConfig.channel_id == channel
     )
+
+    await client.pins_add(channel=channel, timestamp=msg["ts"])
