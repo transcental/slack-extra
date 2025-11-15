@@ -32,7 +32,8 @@
         "scopes": {
             "user": [
                 "users.profile:write",
-                "chat:write"
+                "chat:write",
+                "pins:write"
             ],
             "bot": [
                 "channels:join",
