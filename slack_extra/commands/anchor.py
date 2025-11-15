@@ -5,8 +5,10 @@ from blockkit import RichTextInput
 from blockkit import Section
 from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncRespond
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
+from slack_extra.config import config
 from slack_extra.datastore import PiccoloInstallationStore
 from slack_extra.tables import AnchorConfig
 from slack_extra.utils.oauth import generate_oauth_url
@@ -34,6 +36,28 @@ async def anchor_handler(
     anchor_config = (
         await AnchorConfig.objects().where(AnchorConfig.channel_id == channel).first()
     )
+
+    try:
+        await client.conversations_join(channel=channel)
+    except SlackApiError as e:
+        if e.response["error"] != "channel_not_found":
+            await respond(
+                f"please add me to the channel first! (`{e.response['error']}`)"
+            )
+            return
+        if e.response["error"] == "method_not_supported_for_channel_type":
+            await respond(
+                "oops! anchor doesn't support direct messages or multi-person direct messages."
+            )
+            return
+        if e.response["error"] == "too_many_members":
+            await respond("looks like this channel is full D:")
+            return
+        else:
+            await respond(
+                f"an unexpected error occurred, please ask <@{config.slack.maintainer_id}> about it: `{e.response['error']}`"
+            )
+            return
 
     if action and anchor_config:
         match action:
