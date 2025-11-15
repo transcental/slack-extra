@@ -17,11 +17,11 @@ class SlackOAuthInstallation(Table):
     bot_token = Secret()
     bot_id = Varchar(length=20, null=True)
     bot_user_id = Varchar(length=20, null=True)
-    bot_scopes = JSON(null=True)
+    bot_scopes = JSON(null=True, default=[])
 
     user_id = Varchar(length=20, index=True)
     user_token = Secret(null=True)
-    user_scopes = JSON(null=True)
+    user_scopes = JSON(null=True, default=[])
 
     incoming_webhook_url = Text(null=True)
     incoming_webhook_channel = Varchar(length=255, null=True)
@@ -37,3 +37,12 @@ class SlackOAuthInstallation(Table):
 class SlackOAuthState(Table):
     state = Varchar(length=255, unique=True, index=True)
     expire_at = Integer()
+
+
+class AnchorConfig(Table):
+    channel_id = Varchar(length=20, index=True)
+    enabled = Boolean(default=True)
+    message = JSON(null=True)
+    message_ts = Varchar(length=20)
+    created_at = Timestamptz()
+    updated_at = Timestamptz()

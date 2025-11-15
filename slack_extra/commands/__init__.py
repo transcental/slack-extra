@@ -10,6 +10,7 @@ from slack_bolt.async_app import AsyncRespond
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
+from slack_extra.commands.anchor import anchor_handler
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.manager import manager_handler
 from slack_extra.commands.move import move_handler
@@ -153,6 +154,19 @@ COMMANDS = [
                 "name": "spoiler",
                 "type": "string",
                 "description": "Text to hide!",
+                "required": False,
+            }
+        ],
+    },
+    {
+        "name": "anchor",
+        "description": "Anchor a message in the current channel",
+        "function": anchor_handler,
+        "parameters": [
+            {
+                "name": "action",
+                "type": "choice",
+                "choices": ["enable", "disable"],
                 "required": False,
             }
         ],

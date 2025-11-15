@@ -60,6 +60,12 @@
         }
     },
     "settings": {
+        "event_subscriptions": {
+            "bot_events": [
+                "message.channels",
+                "message.groups"
+            ]
+        },
         "interactivity": {
             "is_enabled": true
         },

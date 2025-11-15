@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from datetime import UTC
@@ -78,10 +79,10 @@ class PiccoloInstallationStore(AsyncInstallationStore):
             bot_token=result["bot_token"],
             bot_id=result["bot_id"],
             bot_user_id=result["bot_user_id"],
-            bot_scopes=result["bot_scopes"],
+            bot_scopes=json.loads(result["bot_scopes"]),
             user_id=result["user_id"],
             user_token=result["user_token"],
-            user_scopes=result["user_scopes"],
+            user_scopes=json.loads(result["user_scopes"]),
             incoming_webhook_url=result["incoming_webhook_url"],
             incoming_webhook_channel=result["incoming_webhook_channel"],
             incoming_webhook_channel_id=result["incoming_webhook_channel_id"],

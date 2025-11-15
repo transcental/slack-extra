@@ -108,8 +108,22 @@ async def manager_add_handler(
 
             await respond(
                 f"⚠️ You are a workspace admin/owner and need to authorize with OAuth to edit your profile.\n\n"
-                f"Click here to authorize: <{oauth_url}|Authorize App>\n\n"
+                f"Click here to authorize: <{oauth_url}|Authorise App>\n\n"
                 f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope._{ran}"
+            )
+            return
+        if (
+            installation.user_scopes
+            and "users.profile:write" not in installation.user_scopes
+        ):
+            scopes: list = installation.user_scopes  # type: ignore (This is a list)
+            scopes.append("users.profile:write")
+            oauth_url = await generate_oauth_url(user_scopes=scopes)
+
+            await respond(
+                f"⚠️ You are a workspace admin/owner and need to authorize with OAuth to edit your profile.\n\n"
+                f"Click here to authorize: <{oauth_url}|Authorise App>\n\n"
+                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope and any scopes you've previously authorised._{ran}"
             )
             return
 

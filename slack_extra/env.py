@@ -10,8 +10,10 @@ from starlette.applications import Starlette
 from slack_extra.actions import register_actions
 from slack_extra.commands import register_commands
 from slack_extra.config import config
+from slack_extra.events import register_events
 from slack_extra.shortcuts import register_shortcuts
 from slack_extra.utils.logging import send_heartbeat
+from slack_extra.views import register_views
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,8 @@ class Environment:
         register_commands(env.app)
         register_shortcuts(env.app)
         register_actions(env.app)
+        register_views(env.app)
+        register_events(env.app)
 
         logger.debug(f"Environment setup in {time() - st:.02}s")
         await send_heartbeat(
