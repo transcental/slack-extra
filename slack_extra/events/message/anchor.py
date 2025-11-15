@@ -10,7 +10,28 @@ from slack_extra.tables import AnchorConfig
 async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient):
     channel = event["channel"]
     subtype = event.get("subtype")
-    subtypes = ["bot_message", "file_share", "me_message", "thread_broadcast", None]
+    subtypes = [
+        "bot_message",
+        "file_share",
+        "me_message",
+        "thread_broadcast",
+        None,
+        "channel_convert_to_private",
+        "channel_convert_to_public",
+        "channel_join",
+        "channel_leave",
+        "channel_name",
+        "channel_purpose",
+        "channel_posting_permissions",
+        "channel_topic",
+        "channel_unarchive",
+        "group_join",
+        "group_leave",
+        "group_name",
+        "group_purpose",
+        "group_topic",
+        "group_unarchive",
+    ]
 
     if subtype not in subtypes:
         return
