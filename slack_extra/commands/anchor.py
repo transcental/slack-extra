@@ -84,8 +84,9 @@ async def anchor_handler(
             f"Hi there! To configure Anchor, please authorise me by clicking this link: {oauth_url}"
         )
         return
-    elif installation.user_scopes and all(
-        s not in installation.user_scopes for s in {"chat:write", "pins:write"}
+    elif installation.user_scopes and (
+        "chat:write" not in installation.user_scopes
+        or "pins:write" not in installation.user_scopes
     ):
         scopes: list = installation.user_scopes  # type: ignore (This is a list)
         scopes.extend(["chat:write", "pins:write"])
