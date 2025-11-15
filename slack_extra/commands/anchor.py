@@ -1,3 +1,5 @@
+import json
+
 from blockkit import Divider
 from blockkit import Input
 from blockkit import Modal
@@ -135,8 +137,17 @@ async def anchor_handler(
     modal.private_metadata(f"{channel}|{'edit' if anchor_config else 'create'}")
     modal.close("Cancel")
     modal.submit("Edit" if anchor_config else "Create")
+    modal = modal.build()
+
+    if anchor_config:
+        for block in modal["blocks"]:
+            if block.get("block_id") == "anchor_input":
+                block["element"]["initial_value"] = {
+                    "type": "rich_text",
+                    "elements": json.loads(anchor_config.message)["elements"],
+                }
 
     await client.views_open(
         trigger_id=command.get("trigger_id"),
-        view=modal.build(),
+        view=modal,
     )
