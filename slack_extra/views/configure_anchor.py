@@ -27,21 +27,26 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
         return
 
     user_token = installation.user_token
+    if installation.user_scopes and "pins:write" in installation.user_scopes:
+        pin_token = user_token
+    else:
+        pin_token = config.slack.bot_token
+
+    msg = await client.chat_postMessage(
+        channel=channel,
+        blocks=[rich_text_value],
+        metadata={
+            "event_type": "anchor",
+            "event_payload": {
+                "channel": channel,
+            },
+        },
+        token=user_token,
+    )
+    await client.pins_add(channel=channel, timestamp=msg["ts"], token=pin_token)
 
     match operation:
         case "create":
-            msg = await client.chat_postMessage(
-                channel=channel,
-                blocks=[rich_text_value],
-                metadata={
-                    "event_type": "anchor",
-                    "event_payload": {
-                        "channel": channel,
-                    },
-                },
-                token=user_token,
-            )
-            await client.pins_add(channel=channel, timestamp=msg["ts"])
             anchor_config = AnchorConfig(
                 channel_id=channel,
                 message=rich_text_value,
@@ -58,18 +63,6 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
                 .first()
             )
             if anchor_config:
-                msg = await client.chat_postMessage(
-                    channel=channel,
-                    blocks=[rich_text_value],
-                    metadata={
-                        "event_type": "anchor",
-                        "event_payload": {
-                            "channel": channel,
-                        },
-                    },
-                    token=user_token,
-                )
-                await client.pins_add(channel=channel, timestamp=msg["ts"])
                 await anchor_config.update(
                     {
                         AnchorConfig.message: rich_text_value,

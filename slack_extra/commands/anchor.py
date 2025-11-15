@@ -79,14 +79,16 @@ async def anchor_handler(
         user_id=performer, team_id=None, enterprise_id=None
     )
     if not installation:
-        oauth_url = await generate_oauth_url(user_scopes=["chat:write"])
+        oauth_url = await generate_oauth_url(user_scopes=["chat:write", "pins:write"])
         await respond(
             f"Hi there! To configure Anchor, please authorise me by clicking this link: {oauth_url}"
         )
         return
-    elif installation.user_scopes and "chat:write" not in installation.user_scopes:
+    elif installation.user_scopes and all(
+        s not in installation.user_scopes for s in {"chat:write", "pins:write"}
+    ):
         scopes: list = installation.user_scopes  # type: ignore (This is a list)
-        scopes.append("chat:write")
+        scopes.extend(["chat:write", "pins:write"])
         oauth_url = await generate_oauth_url(user_scopes=scopes)
         await respond(
             f"Hi there! To configure Anchor, please authorise me by clicking this link: {oauth_url}"

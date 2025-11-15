@@ -90,4 +90,9 @@ async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient
         AnchorConfig.channel_id == channel
     )
 
-    await client.pins_add(channel=channel, timestamp=msg["ts"])
+    if installation.user_scopes and "pins:write" in installation.user_scopes:
+        pin_token = installation.user_token
+    else:
+        pin_token = config.slack.bot_token
+
+    await client.pins_add(channel=channel, timestamp=msg["ts"], token=pin_token)
