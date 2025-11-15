@@ -49,7 +49,7 @@ async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient
         return
 
     await client.chat_delete(
-        channel=channel, ts=anchor_config.message_ts, token=installation.user_token
+        channel=channel, ts=anchor_config.message_ts, token=config.slack.user_token
     )
 
     msg = await client.chat_postMessage(
