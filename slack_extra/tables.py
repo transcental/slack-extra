@@ -44,5 +44,6 @@ class AnchorConfig(Table):
     enabled = Boolean(default=True)
     message = JSON(null=True)
     message_ts = Varchar(length=20)
+    user_id = Varchar(length=20)
     created_at = Timestamptz()
     updated_at = Timestamptz()

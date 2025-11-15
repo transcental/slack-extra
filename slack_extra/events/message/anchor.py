@@ -43,13 +43,14 @@ async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient
 
     installation_store = PiccoloInstallationStore()
     installation = await installation_store.async_find_installation(
-        user_id=None, team_id=None, enterprise_id=None
+        user_id=anchor_config.user_id, team_id=None, enterprise_id=None
     )
+
     if not installation or not installation.user_token:
         return
 
     await client.chat_delete(
-        channel=channel, ts=anchor_config.message_ts, token=config.slack.user_token
+        channel=channel, ts=anchor_config.message_ts, token=installation.user_token
     )
 
     msg = await client.chat_postMessage(

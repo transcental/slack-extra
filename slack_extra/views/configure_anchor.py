@@ -46,6 +46,7 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
                 message=rich_text_value,
                 enabled=True,
                 message_ts=msg["ts"],
+                user_id=user_id,
             )
             await AnchorConfig.insert(anchor_config)
             return
@@ -67,9 +68,13 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
                     },
                     token=user_token,
                 )
-                anchor_config.message = rich_text_value
-                anchor_config.message_ts = msg["ts"]
-                await anchor_config.update()
+                await anchor_config.update(
+                    {
+                        AnchorConfig.message: rich_text_value,
+                        AnchorConfig.message_ts: msg["ts"],
+                        AnchorConfig.user_id: user_id,
+                    }
+                )
                 return
             else:
                 await client.chat_postMessage(
