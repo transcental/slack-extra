@@ -1,10 +1,12 @@
 import json
 
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.config import config
 from slack_extra.datastore import PiccoloInstallationStore
 from slack_extra.tables import AnchorConfig
+from slack_extra.utils.logging import send_heartbeat
 
 
 async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient):
@@ -70,21 +72,42 @@ async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient
     if not installation or not installation.user_token:
         return
 
-    await client.chat_delete(
-        channel=channel, ts=anchor_config.message_ts, token=installation.user_token
-    )
+    try:
+        await client.chat_delete(
+            channel=channel, ts=anchor_config.message_ts, token=installation.user_token
+        )
+    except SlackApiError as e:
+        await send_heartbeat(
+            f"Failed to delete anchor message in channel <#{channel}>: {e.response['error']}"
+        )
 
-    msg = await client.chat_postMessage(
-        channel=channel,
-        blocks=[json.loads(anchor_config.message)],
-        metadata={
-            "event_type": "anchor",
-            "event_payload": {
-                "channel": channel,
+    try:
+        msg = await client.chat_postMessage(
+            channel=channel,
+            blocks=[json.loads(anchor_config.message)],
+            metadata={
+                "event_type": "anchor",
+                "event_payload": {
+                    "channel": channel,
+                },
             },
-        },
-        token=installation.user_token,
-    )
+            token=installation.user_token,
+        )
+    except SlackApiError as e:
+        error = e.response["error"]
+        await send_heartbeat(
+            f"Failed to post anchor message in channel <#{channel}> with error {error}."
+        )
+        if error in ["invalid_auth", "no_permission", "token_expired", "token_revoked"]:
+            await AnchorConfig.update({AnchorConfig.enabled: False}).where(
+                AnchorConfig.channel_id == channel
+            )
+            await client.chat_postMessage(
+                channel=anchor_config.user_id,
+                text=f"hey! i had to disable anchor messages in <#{channel}> because i got this error - `{error}`.\nif you're confused, maybe check out <#{config.slack.support_channel}> for help!",
+                token=config.slack.bot_token,
+            )
+        return
 
     await AnchorConfig.update({AnchorConfig.message_ts: msg["ts"]}).where(
         AnchorConfig.channel_id == channel

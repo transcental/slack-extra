@@ -15,6 +15,7 @@ class SlackConfig(BaseSettings):
     xoxc_token: str
     xoxd_token: str
     maintainer_id: str
+    support_channel: str
 
 
 class AirtableNDABaseConfig(BaseSettings):
