@@ -1,3 +1,5 @@
+import json
+
 from blockkit import Context
 from blockkit import Modal
 from blockkit import Section
@@ -7,6 +9,7 @@ from slack_bolt.async_app import AsyncRespond
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
+from slack_extra.tables import Spoiler
 from slack_extra.utils.logging import send_heartbeat
 
 
@@ -90,5 +93,40 @@ async def view_spoiler_handler(
             await client.views_open(trigger_id=body["trigger_id"], view=modal)
             return
 
-        case "_":
-            await respond("oops, i can't handle this yet!")
+        case "db":
+            spoiler = (
+                await Spoiler.objects()
+                .where((Spoiler.channel == channel) & (Spoiler.message_ts == ts))
+                .first()
+            )
+            if spoiler:
+                modal = {
+                    "type": "modal",
+                    "title": {"type": "plain_text", "text": "Spoiler 👀"},
+                    "close": {"type": "plain_text", "text": "Close"},
+                    "blocks": [
+                        json.loads(spoiler.message),
+                        {
+                            "type": "context",
+                            "elements": [
+                                {
+                                    "type": "mrkdwn",
+                                    "text": f"spoilered by <@{spoiler.user}>",
+                                }
+                            ],
+                        },
+                    ],
+                }
+                await client.views_open(trigger_id=body["trigger_id"], view=modal)
+                return
+            else:
+                await client.chat_postEphemeral(
+                    channel=channel,
+                    user=user_id,
+                    text="oops, something went wrong fetching that message from the database!",
+                )
+                await send_heartbeat(
+                    heartbeat="Error in view_spoiler_handler",
+                    messages=[f"Spoiler not found in DB for {channel} at {ts}"],
+                )
+                return

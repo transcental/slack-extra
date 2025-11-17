@@ -47,3 +47,11 @@ class AnchorConfig(Table):
     user_id = Varchar(length=20)
     created_at = Timestamptz()
     updated_at = Timestamptz()
+
+
+class Spoiler(Table):
+    channel = Varchar(length=20)
+    message_ts = Varchar(length=20)
+    message = JSON()
+    user = Varchar(length=20)
+    created_at = Timestamptz()

@@ -2,7 +2,11 @@ import re
 from typing import Optional
 
 from blockkit import Button
+from blockkit import FileInput
+from blockkit import Input
 from blockkit import Message
+from blockkit import Modal
+from blockkit import RichTextInput
 from blockkit import Section
 from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncRespond
@@ -19,6 +23,7 @@ async def spoiler_handler(
     performer: str,
     channel: str,
     raw_command: str,
+    command: dict,
     spoiler: Optional[str] = None,
 ):
     await ack()
@@ -92,4 +97,41 @@ async def spoiler_handler(
         pfp = slack_user.get("user", {}).get("profile", {}).get("image_512") or None
         await client.chat_postMessage(
             channel=channel, username=display_name, icon_url=pfp, **message
+        )
+    else:
+        modal = (
+            Modal()
+            .callback_id("create_spoiler")
+            .title("Send Spoiler 👀")
+            .add_block(
+                Section(
+                    text="Please wrap the phrases you want spoilered in `||` (double vertical bars). For example, `This is a ||spoiler||.`"
+                )
+            )
+            .add_block(
+                Input()
+                .label("Text")
+                .element(
+                    RichTextInput()
+                    .action_id("spoiler_input")
+                    .placeholder("did you know? orpheus loves ||heidi||!")
+                )
+                .block_id("spoiler_input")
+            )
+            .add_block(
+                Input()
+                .label("Files!")
+                .element(FileInput().action_id("spoiler_files"))
+                .optional(True)
+                .block_id("spoiler_files")
+            )
+            .private_metadata(channel)
+            .submit("Send Spoiler")
+            .close("Cancel")
+        ).build()
+
+        trigger_id = command.get("trigger_id")
+        await client.views_open(
+            trigger_id=trigger_id,
+            view=modal,
         )
