@@ -11,80 +11,12 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.commands.anchor import anchor_handler
+from slack_extra.commands.group import group_handler
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.manager import manager_handler
 from slack_extra.commands.move import move_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
-
-
-def _normalize_user_token(token: str) -> str | None:
-    """Extract a Slack user id from common mention forms or accept raw ids.
-
-    Supported forms:
-    - <@U123ABC|username>
-    - <@U123ABC>
-    - U123ABC
-
-    Returns the extracted user id (e.g. 'U123ABC') or None if not recognized.
-    """
-    if not isinstance(token, str):
-        return None
-
-    # Match <@U123ABC|name> or <@U123ABC>
-    m = re.match(r"^<@([UW][A-Z0-9]+)(?:\|[^>]+)?>$", token)
-    if m:
-        return m.group(1)
-
-    # Plain id like U123ABC or W123ABC
-    if re.match(r"^[UW][A-Z0-9]+$", token):
-        return token
-
-    return None
-
-
-def _normalize_channel_token(token: str) -> str | None:
-    """Extract channel id from common Slack channel forms.
-
-    Supported forms:
-    - <#C123ABC|name>
-    - <#C123ABC>
-    - C123ABC or G123ABC
-    """
-    if not isinstance(token, str):
-        return None
-
-    m = re.match(r"^<#([CG][A-Z0-9]+)(?:\|[^>]+)?>$", token)
-    if m:
-        return m.group(1)
-
-    if re.match(r"^[CG][A-Z0-9]+$", token):
-        return token
-
-    return None
-
-
-def _extract_mailto(token: str) -> str | None:
-    """
-    Extract an email from Slack's mailto token form:
-      <mailto:amber@hackclub.com|amber@hackclub.com>
-    or
-      <mailto:amber@hackclub.com>
-    Returns the extracted email string or None.
-    """
-    if not isinstance(token, str):
-        return None
-
-    m = re.match(r"^<mailto:([^|>]+)(?:\|[^>]+)?>$", token, re.I)
-    if m:
-        return m.group(1).strip()
-
-    return None
-
-
-# Simple email detection regex (not full validation)
-_EMAIL_SIMPLE_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
 
 COMMANDS = [
     {
@@ -171,7 +103,119 @@ COMMANDS = [
             }
         ],
     },
+    {
+        "name": "group",
+        "description": "Join or leave a user group!",
+        "function": group_handler,
+        "parameters": [
+            {
+                "name": "action",
+                "type": "choice",
+                "choices": ["join", "leave"],
+                "description": "Join or leave a user group",
+                "required": True,
+            },
+            {
+                "name": "group",
+                "type": "subteam",
+                "required": True,
+                "description": "The user group to join or leave",
+            },
+        ],
+    },
 ]
+
+
+def _normalize_user_token(token: str) -> str | None:
+    """Extract a Slack user id from common mention forms or accept raw ids.
+
+    Supported forms:
+    - <@U123ABC|username>
+    - <@U123ABC>
+    - U123ABC
+
+    Returns the extracted user id (e.g. 'U123ABC') or None if not recognized.
+    """
+    if not isinstance(token, str):
+        return None
+
+    # Match <@U123ABC|name> or <@U123ABC>
+    m = re.match(r"^<@([UW][A-Z0-9]+)(?:\|[^>]+)?>$", token)
+    if m:
+        return m.group(1)
+
+    # Plain id like U123ABC or W123ABC
+    if re.match(r"^[UW][A-Z0-9]+$", token):
+        return token
+
+    return None
+
+
+def _normalize_channel_token(token: str) -> str | None:
+    """Extract channel id from common Slack channel forms.
+
+    Supported forms:
+    - <#C123ABC|name>
+    - <#C123ABC>
+    - C123ABC or G123ABC
+    """
+    if not isinstance(token, str):
+        return None
+
+    m = re.match(r"^<#([CG][A-Z0-9]+)(?:\|[^>]+)?>$", token)
+    if m:
+        return m.group(1)
+
+    if re.match(r"^[CG][A-Z0-9]+$", token):
+        return token
+
+    return None
+
+
+def _normalize_subteam_token(token: str) -> str | None:
+    """Extract a Slack subteam (user group) id from common mention forms or accept raw ids.
+
+    Supported forms:
+    - <!subteam^S123ABC|@groupname>
+    - S123ABC
+
+    Returns the extracted subteam id (e.g. 'S123ABC') or None if not recognized.
+    """
+    if not isinstance(token, str):
+        return None
+
+    # Match <!subteam^S123ABC|name> or <!subteam^S123ABC>
+    m = re.match(r"^<!subteam\^([S][A-Z0-9]+)(?:\|[^>]+)?>$", token)
+    if m:
+        return m.group(1)
+
+    # Plain id like S123ABC
+    if re.match(r"^[S][A-Z0-9]+$", token):
+        return token
+
+    return None
+
+
+def _extract_mailto(token: str) -> str | None:
+    """
+    Extract an email from Slack's mailto token form:
+      <mailto:amber@hackclub.com|amber@hackclub.com>
+    or
+      <mailto:amber@hackclub.com>
+    Returns the extracted email string or None.
+    """
+    if not isinstance(token, str):
+        return None
+
+    m = re.match(r"^<mailto:([^|>]+)(?:\|[^>]+)?>$", token, re.I)
+    if m:
+        return m.group(1).strip()
+
+    return None
+
+
+# Simple email detection regex (not full validation)
+_EMAIL_SIMPLE_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def register_commands(app: AsyncApp):
@@ -435,6 +479,22 @@ def register_commands(app: AsyncApp):
                             )
                             continue
                         value = match
+
+                    elif ptype == "subteam":
+                        # subteam (user group) token normalization
+                        if not isinstance(raw_val, str):
+                            errors.append(
+                                f"Parameter '{pname}' must be a usergroup mention or ID (e.g. <!subteam^S12345|@groupname> or S12345)."
+                            )
+                            continue
+                        s_id = _normalize_subteam_token(raw_val.strip())
+                        if s_id:
+                            value = s_id
+                        else:
+                            errors.append(
+                                f"Parameter '{pname}' must be a usergroup mention or ID (e.g. <!subteam^S12345|@groupname> or S12345)."
+                            )
+                            continue
 
                     else:
                         # string or unknown types => treat as string and decode escape sequences
