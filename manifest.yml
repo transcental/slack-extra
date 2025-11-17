@@ -57,7 +57,9 @@
                 "groups:history",
                 "chat:write.public",
                 "chat:write.customize",
-                "pins:write"
+                "pins:write",
+                "files:read",
+                "files:write"
             ]
         }
     },
