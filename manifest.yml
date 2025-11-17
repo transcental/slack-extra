@@ -15,6 +15,12 @@
                 "type": "message",
                 "callback_id": "delete_message",
                 "description": "Delete this bot message from your channel"
+            },
+            {
+                "name": "DEV Send spoiler",
+                "type": "message",
+                "callback_id": "spoiler",
+                "description": "Send a spoiler message"
             }
         ],
         "slash_commands": [

@@ -433,7 +433,8 @@ async def create_spoiler_handler(ack: AsyncAck, body: dict, client: AsyncWebClie
     await ack()
     view = body["view"]
     state = view["state"]["values"]
-    channel = view.get("private_metadata", "")
+    metadata = view.get("private_metadata", "")
+    channel, thread_ts = metadata.split(";") if ";" in metadata else (metadata, None)
 
     rich_text = state["spoiler_input"]["spoiler_input"]["rich_text_value"]
     files = state["spoiler_files"]["spoiler_files"]["files"]
@@ -509,6 +510,7 @@ async def create_spoiler_handler(ack: AsyncAck, body: dict, client: AsyncWebClie
         icon_url=pfp,
         unfurl_media=True,
         unfurl_links=True,
+        thread_ts=thread_ts,
     )
 
     db_entry = Spoiler(
