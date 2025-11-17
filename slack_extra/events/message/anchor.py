@@ -92,6 +92,8 @@ async def anchor_message_handler(body: dict, event: dict, client: AsyncWebClient
                 },
             },
             token=installation.user_token,
+            unfurl_links=True,
+            unfurl_media=True,
         )
     except SlackApiError as e:
         error = e.response["error"]

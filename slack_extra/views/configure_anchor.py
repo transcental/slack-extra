@@ -42,6 +42,8 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
             },
         },
         token=user_token,
+        unfurl_links=True,
+        unfurl_media=True,
     )
     await client.pins_add(channel=channel, timestamp=msg["ts"], token=pin_token)
 
