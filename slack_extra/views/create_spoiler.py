@@ -520,4 +520,5 @@ async def create_spoiler_handler(ack: AsyncAck, body: dict, client: AsyncWebClie
     await client.files_upload_v2(
         channel=channel,
         file_uploads=files_to_upload,
+        thread_ts=thread_ts,
     )
