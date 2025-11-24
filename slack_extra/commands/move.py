@@ -6,6 +6,7 @@ from slack_bolt.async_app import AsyncRespond
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
+from slack_extra.config import config
 from slack_extra.utils.logging import send_heartbeat
 from slack_extra.utils.slack import is_channel_manager
 
@@ -85,7 +86,7 @@ async def move_handler(
             users = channel_members[:100]
             del channel_members[:100]
             res = await client.conversations_invite(
-                users=users, channel=end, force=True
+                users=users, channel=end, force=True, token=config.slack.user_token
             )
             if not res.get("ok"):
                 if res.get("error") == "ratelimited":
