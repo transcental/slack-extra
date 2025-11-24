@@ -42,10 +42,8 @@ async def anchor_handler(
     try:
         await client.conversations_join(channel=channel)
     except SlackApiError as e:
-        if e.response["error"] != "channel_not_found":
-            await respond(
-                f"please add me to the channel first! (`{e.response['error']}`)"
-            )
+        if e.response["error"] == "channel_not_found":
+            await respond("please add me to the channel first!")
             return
         if e.response["error"] == "method_not_supported_for_channel_type":
             await respond(

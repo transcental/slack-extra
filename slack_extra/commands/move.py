@@ -3,6 +3,7 @@ from asyncio import sleep
 
 from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncRespond
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.utils.logging import send_heartbeat
@@ -34,9 +35,12 @@ async def move_handler(
     try:
         channels = [start, end]
         for c in channels:
-            r = await client.conversations_join(channel=c)
-            if not r.get("ok"):
-                await respond(f"Failed to join <#{c} - `{r.get('error')}`{ran}")
+            try:
+                await client.conversations_join(channel=c)
+            except SlackApiError as e:
+                error = e.response.get("error")
+                if error in ["channel_not_found", ""]:
+                    await respond(f"Failed to join <#{c} - `{error}`{ran}")
     except Exception as e:
         tb = traceback.format_exception(e)
 
