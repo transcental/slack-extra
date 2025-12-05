@@ -1,7 +1,6 @@
 import codecs
 import logging
 import re
-import shlex
 from typing import Any
 
 from slack_bolt.async_app import AsyncAck
@@ -218,6 +217,180 @@ def _extract_mailto(token: str) -> str | None:
 _EMAIL_SIMPLE_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+def _assign_tokens_to_params(
+    parsed_tokens: list[str], params: list[dict]
+) -> list[str | None]:
+    """
+    Assign incoming tokens to params by type when possible.
+
+    Rules (greedy, in token order):
+      - If token looks like a channel -> assign to first unassigned param of type 'channel'
+      - Else if token looks like a user mention/ID or an email/mailto -> assign to first unassigned param of type 'user'
+      - Else if token looks like a subteam -> assign to first unassigned param of type 'subteam'
+      - Else if token matches a 'choice' param's choices -> assign to that 'choice' param
+      - Else -> assign to the next unassigned param (fallback)
+    Returns a list aligned to params where each slot is the token assigned to that param or None.
+    """
+    if not parsed_tokens or not params:
+        return [None] * len(params)
+
+    logging.debug(
+        "_assign_tokens_to_params: tokens=%s params_types=%s",
+        parsed_tokens,
+        [p.get("type") for p in params],
+    )
+
+    free_indices = [i for i in range(len(params))]
+    assigned: list[str | None] = [None] * len(params)
+
+    for tok in parsed_tokens:
+        tok_str = tok if isinstance(tok, str) else str(tok)
+        chosen_idx = None
+
+        # Try channel (accept bare channel names starting with '#')
+        if (
+            isinstance(tok_str, str) and tok_str.startswith("#")
+        ) or _normalize_channel_token(tok_str):
+            logging.debug("Token '%s' detected as channel-like", tok_str)
+            for i in free_indices:
+                if params[i].get("type") == "channel":
+                    chosen_idx = i
+                    logging.debug(
+                        " -> will assign token '%s' to channel param index %s (name=%s)",
+                        tok_str,
+                        i,
+                        params[i].get("name"),
+                    )
+                    break
+
+        # Try user / email forms
+        if chosen_idx is None:
+            if _normalize_user_token(tok_str):
+                logging.debug("Token '%s' detected as user-id-like", tok_str)
+            if _extract_mailto(tok_str) or (
+                "@" in tok_str and _EMAIL_SIMPLE_RE.match(tok_str)
+            ):
+                logging.debug("Token '%s' detected as email-like", tok_str)
+            if (
+                _normalize_user_token(tok_str)
+                or _extract_mailto(tok_str)
+                or ("@" in tok_str and _EMAIL_SIMPLE_RE.match(tok_str))
+            ):
+                for i in free_indices:
+                    if params[i].get("type") == "user":
+                        chosen_idx = i
+                        logging.debug(
+                            " -> will assign token '%s' to user param index %s (name=%s)",
+                            tok_str,
+                            i,
+                            params[i].get("name"),
+                        )
+                        break
+
+        # Try subteam
+        if chosen_idx is None and _normalize_subteam_token(tok_str):
+            logging.debug("Token '%s' detected as subteam-like", tok_str)
+            for i in free_indices:
+                if params[i].get("type") == "subteam":
+                    chosen_idx = i
+                    logging.debug(
+                        " -> will assign token '%s' to subteam param index %s (name=%s)",
+                        tok_str,
+                        i,
+                        params[i].get("name"),
+                    )
+                    break
+
+        # Try matching a choice param
+        if chosen_idx is None:
+            for i in free_indices:
+                if params[i].get("type") == "choice":
+                    choices = params[i].get("choices") or []
+                    try:
+                        lower_map = {str(c).lower(): c for c in choices}
+                    except Exception:
+                        lower_map = {}
+                    if lower_map.get(tok_str.lower()) is not None:
+                        chosen_idx = i
+                        logging.debug(
+                            "Token '%s' matched choice param index %s (name=%s)",
+                            tok_str,
+                            i,
+                            params[i].get("name"),
+                        )
+                        break
+
+        # Fallback to first free param
+        if chosen_idx is None and free_indices:
+            chosen_idx = free_indices[0]
+            logging.debug(
+                "Token '%s' falling back to first free param index %s (name=%s)",
+                tok_str,
+                chosen_idx,
+                params[chosen_idx].get("name"),
+            )
+
+        if chosen_idx is not None:
+            assigned[chosen_idx] = tok_str
+            free_indices.remove(chosen_idx)
+            logging.debug(
+                "Assigned token '%s' -> index %s (param=%s). Remaining free indices: %s",
+                tok_str,
+                chosen_idx,
+                params[chosen_idx].get("name"),
+                free_indices,
+            )
+
+        if not free_indices:
+            break
+
+    logging.debug("Final token->param assignment: %s", assigned)
+    return assigned
+
+
+async def _find_channel_id_by_name(client: AsyncWebClient, name: str) -> str | None:
+    """
+    Look up a channel id by a bare channel name (like '#foo' or 'foo').
+    Returns the channel id (e.g. 'C123ABC') or None if not found.
+
+    This paginates conversations_list and matches on 'name' or 'name_normalized'.
+    """
+    if not isinstance(name, str) or name.strip() == "":
+        return None
+    lookup_name = name.strip().lstrip("#")
+    try:
+        cursor = None
+        while True:
+            # Request both public and private channels where the bot is a member
+            resp = await client.conversations_list(
+                limit=200, cursor=cursor, types="public_channel,private_channel"
+            )
+            data = getattr(resp, "data", resp) if resp is not None else {}
+            channels = []
+            if isinstance(data, dict):
+                channels = data.get("channels") or []
+            # Match by name (exact) or name_normalized
+            for ch in channels:
+                cname = ch.get("name")
+                cname_norm = ch.get("name_normalized")
+                if cname == lookup_name or cname_norm == lookup_name:
+                    return ch.get("id")
+            # Pagination
+            if isinstance(data, dict):
+                cursor = (data.get("response_metadata") or {}).get("next_cursor")
+            else:
+                cursor = None
+            if not cursor:
+                break
+    except SlackApiError as e:
+        logging.debug(
+            f"Slack API error looking up channel name '{name}': {getattr(e, 'response', str(e))}"
+        )
+    except Exception:
+        logging.exception("Error looking up channel by name")
+    return None
+
+
 def register_commands(app: AsyncApp):
     COMMAND_PREFIX = "/se" if config.environment == "production" else "/dev-se"
     admin_help = ""
@@ -276,11 +449,33 @@ def register_commands(app: AsyncApp):
         ran = f"\n_You ran `{COMMAND_PREFIX} {raw_text}`_" if raw_text else ""
 
         try:
-            lexer = shlex.shlex(raw_text or "", posix=True)
-            lexer.whitespace_split = True
-            lexer.quotes = '"'
-            tokens = list(lexer) if raw_text else []
-        except ValueError as e:
+            # Tokenizer that preserves Slack angle-bracket tokens (e.g. <#C123|name>, <@U123>, <mailto:...>),
+            # preserves quoted strings as single tokens, and otherwise splits on whitespace.
+            #
+            # Regex groups:
+            # 1: angle-bracket tokens like <...> (no spaces inside)
+            # 2: double quoted strings (supports simple backslash escapes)
+            # 4: bare non-space token (\S+)
+            token_re = re.compile(r'(<[^>\s]+>)|("([^"\\]|\\.)*")|(\S+)')
+            if raw_text:
+                raw_text_str = raw_text
+                matches = list(token_re.finditer(raw_text_str))
+                tokens = [m.group(0) for m in matches]
+
+                # Unwrap quoted strings, decoding simple escape sequences
+                def _unwrap(tok: str) -> str:
+                    if tok and len(tok) >= 2 and tok[0] == '"' and tok[-1] == '"':
+                        inner = tok[1:-1]
+                        try:
+                            return codecs.decode(inner, "unicode_escape")
+                        except Exception:
+                            return inner
+                    return tok
+
+                tokens = [_unwrap(t) for t in tokens]
+            else:
+                tokens = []
+        except Exception as e:
             await respond(f"Could not parse command text: {e}{ran}")
             return
 
@@ -317,6 +512,19 @@ def register_commands(app: AsyncApp):
                 logging.debug(
                     f"Adjusted args tokens for trailing string parameter: {args_tokens}"
                 )
+
+            # Attempt to assign tokens to params by type so optional params (like channel/user) get sensible defaults.
+            # We do this after the trailing-string adjustment above so the last string param consumes the remainder.
+            if args_tokens and params:
+                mapped = _assign_tokens_to_params(args_tokens, params)
+                # Build an args_tokens list aligned with params; if mapped slot is None, keep None
+                # Mapped length == len(params)
+                args_tokens = [
+                    mapped[i] if i < len(mapped) else None for i in range(len(params))
+                ]
+            else:
+                # ensure args_tokens is indexable in the downstream loop
+                args_tokens = [None] * len(params)
 
             import inspect
 
@@ -448,10 +656,26 @@ def register_commands(app: AsyncApp):
                         if chan:
                             value = chan
                         else:
-                            errors.append(
-                                f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C06R5NKVCG5>)."
-                            )
-                            continue
+                            # Token didn't look like a channel id/mention; attempt to resolve a bare channel name.
+                            # Accept forms like '#name' or 'name' and try to find the channel id via the Web API.
+                            try:
+                                channel_lookup_name = raw_val.strip()
+                                resolved = await _find_channel_id_by_name(
+                                    client, channel_lookup_name
+                                )
+                                if resolved:
+                                    value = resolved
+                                else:
+                                    errors.append(
+                                        f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C06R5NKVCG5>) or a channel name."
+                                    )
+                                    continue
+                            except Exception:
+                                logging.exception("Error resolving channel name")
+                                errors.append(
+                                    f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C06R5NKVCG5>)."
+                                )
+                                continue
 
                     elif ptype == "choice":
                         choices = param.get("choices")
@@ -541,8 +765,8 @@ def register_commands(app: AsyncApp):
                 handler_kwargs["command"] = command
             if "raw_command" in sig.parameters:
                 handler_kwargs["raw_command"] = f"{COMMAND_PREFIX} {raw_text}"
-            if "channel" in sig.parameters:
-                handler_kwargs["channel"] = command.get("channel_id")
+            if "location" in sig.parameters:
+                handler_kwargs["location"] = command.get("channel_id")
 
             await handler(**handler_kwargs)
             return

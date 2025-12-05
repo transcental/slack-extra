@@ -21,12 +21,14 @@ async def spoiler_handler(
     client: AsyncWebClient,
     respond: AsyncRespond,
     performer: str,
-    channel: str,
+    location: str,
     raw_command: str,
     command: dict,
     spoiler: Optional[str] = None,
 ):
     await ack()
+    channel = location
+
     ran = f"\n_You ran `{raw_command}`_"
     text = spoiler
     bold = True

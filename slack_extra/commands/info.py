@@ -2,6 +2,9 @@ from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncRespond
 from slack_sdk.web.async_client import AsyncWebClient
 
+from slack_extra.utils.logging import send_heartbeat
+from slack_extra.utils.slack import get_channel_managers
+
 
 HACKATIME_ENDPOINT = "https://hackatime.hackclub.com/api/v1/users/slackid/trust_factor"
 IDENTITY_ENDPOINT = "https://identity.hackclub.com/api/external/check"
@@ -13,6 +16,7 @@ async def info_handler(
     client: AsyncWebClient,
     respond: AsyncRespond,
     performer: str,
+    location: str,
     user: str | None = None,
     email: str | None = None,
     channel: str | None = None,
@@ -20,9 +24,16 @@ async def info_handler(
     await ack()
     from slack_extra.env import env
 
-    res = f"*User Info{f' for <@{user}>' if user else ''}:*\n"
+    res = "Oops, something went wrong."
+    await send_heartbeat(
+        heartbeat="info_handler invoked",
+        messages=[f"Channel: <#{channel}>\nLocation: <#{location}>"],
+    )
+
+    channel = location if not channel else channel
 
     if user or email:
+        res = f"*User Info{f' for <@{user}>' if user else email}:*\n"
         if user:
             user_info = await client.users_info(user=user)
             if user_info.get("ok"):
@@ -109,6 +120,29 @@ async def info_handler(
         #             res += f"- :tw_shield: *NDA Signed:* Sent but not signed _(<{record_url}|View on Airtable>)_\n"
         #     else:
         #         res += "- :tw_shield: *NDA Signed:* No record found\n"
+
+    elif channel:
+        res = f"*Channel Info for <#{channel}>:*\n"
+        channel_info = await client.conversations_info(
+            channel=channel, include_num_members=True
+        )
+        if channel_info.get("ok"):
+            channel_data = channel_info.get("channel", {})
+            creator = channel_data.get("creator", "N/A")
+            created_ts = channel_data.get("created", 0)
+            member_count = channel_data.get("num_members", 0)
+            res += f"- :bust_in_silhouette: *Creator:* <@{creator}>\n"
+            from datetime import datetime
+
+            created_dt = datetime.fromtimestamp(created_ts)
+            res += f"- :calendar: *Created On:* {created_dt.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            res += f"- :busts_in_silhouette: *Member Count:* {member_count}\n"
+            channel_managers = await get_channel_managers(channel)
+            if channel_managers:
+                manager_mentions = ", ".join([f"<@{mgr}>" for mgr in channel_managers])
+                res += f"- :shield: *Channel Managers:* {manager_mentions}\n"
+        else:
+            res += "- Could not fetch channel info from Slack API.\n"
 
     blocks = []
     blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": res}})

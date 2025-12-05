@@ -22,11 +22,12 @@ async def anchor_handler(
     client: AsyncWebClient,
     respond: AsyncRespond,
     performer: str,
-    channel: str,
+    location: str,
     command: dict,
     action: str | None,
 ):
     await ack()
+    channel = location
 
     allowed = await is_channel_manager(performer, channel)
     if not allowed:
