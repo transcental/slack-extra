@@ -12,10 +12,10 @@ from slack_sdk.web.async_client import AsyncWebClient
 from slack_extra.commands.anchor import anchor_handler
 from slack_extra.commands.group import group_handler
 from slack_extra.commands.info import info_handler
-from slack_extra.commands.manager import manager_handler
 from slack_extra.commands.move import move_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
+# from slack_extra.commands.manager import manager_handler
 
 COMMANDS = [
     {
@@ -37,26 +37,26 @@ COMMANDS = [
             },
         ],
     },
-    {
-        "name": "manager",
-        "description": "Manage your managers",
-        "function": manager_handler,
-        "parameters": [
-            {
-                "name": "action",
-                "type": "choice",
-                "choices": ["add", "remove"],
-                "description": "Action to perform",
-                "required": True,
-            },
-            {
-                "name": "manager",
-                "type": "user",
-                "description": "Manager to add or remove",
-                "required": True,
-            },
-        ],
-    },
+    # {
+    #     "name": "manager",
+    #     "description": "Manage your managers",
+    #     "function": manager_handler,
+    #     "parameters": [
+    #         {
+    #             "name": "action",
+    #             "type": "choice",
+    #             "choices": ["add", "remove"],
+    #             "description": "Action to perform",
+    #             "required": True,
+    #         },
+    #         {
+    #             "name": "manager",
+    #             "type": "user",
+    #             "description": "Manager to add or remove",
+    #             "required": True,
+    #         },
+    #     ],
+    # },
     {
         "name": "move",
         "description": "Add members of one channel to another channel",
