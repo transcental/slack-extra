@@ -70,6 +70,7 @@ async def configure_anchor_handler(ack: AsyncAck, body: dict, client: AsyncWebCl
                         AnchorConfig.message: rich_text_value,
                         AnchorConfig.message_ts: msg["ts"],
                         AnchorConfig.user_id: user_id,
+                        AnchorConfig.enabled: True,
                     }
                 ).where(AnchorConfig.channel_id == channel)
                 return
