@@ -1,6 +1,7 @@
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
+from slack_extra.config import config
 from slack_extra.tables import MigrationChannel
 from slack_extra.utils.logging import send_heartbeat
 
@@ -21,7 +22,9 @@ async def mover_handler(body: dict, event: dict, client: AsyncWebClient):
         for chan in channels:
             if chan != channel_id:
                 try:
-                    await client.conversations_invite(channel=chan, users=[user_id])
+                    await client.conversations_invite(
+                        channel=chan, users=[user_id], token=config.slack.user_token
+                    )
                 except SlackApiError as e:
                     if e.response["error"] == "already_in_channel":
                         pass
