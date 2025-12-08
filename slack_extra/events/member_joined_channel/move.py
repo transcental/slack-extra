@@ -1,3 +1,4 @@
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.tables import MigrationChannel
@@ -21,10 +22,13 @@ async def mover_handler(body: dict, event: dict, client: AsyncWebClient):
             if chan != channel_id:
                 try:
                     await client.conversations_invite(channel=chan, users=[user_id])
-                except Exception as e:
-                    await send_heartbeat(
-                        f"Error inviting user {user_id} to channel {chan}: {e}"
-                    )
+                except SlackApiError as e:
+                    if e.response["error"] == "already_in_channel":
+                        pass
+                    else:
+                        await send_heartbeat(
+                            f"Error inviting user {user_id} to channel {chan}: {e}"
+                        )
         c_str = ", ".join([f"<#{chan}>" for chan in channels if chan != channel_id])
         await client.chat_postEphemeral(
             channel=channel_id,
