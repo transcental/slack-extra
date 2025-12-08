@@ -17,10 +17,10 @@
                 "description": "Delete this bot message from your channel"
             },
             {
-                "name": "DEV Send spoiler",
+                "name": "DEV Send Spoiler",
                 "type": "message",
                 "callback_id": "spoiler",
-                "description": "Send a spoiler message"
+                "description": "Send a spoiler!"
             }
         ],
         "slash_commands": [
@@ -37,17 +37,24 @@
         ],
         "scopes": {
             "user": [
-                "users.profile:write",
                 "chat:write",
-                "pins:write"
+                "users.profile:write",
+                "channels:write.invites",
+                "groups:write.invites"
             ],
             "bot": [
+                "channels:history",
                 "channels:join",
                 "channels:manage",
                 "channels:read",
                 "channels:write.invites",
                 "chat:write",
+                "chat:write.customize",
+                "chat:write.public",
                 "commands",
+                "files:read",
+                "files:write",
+                "groups:history",
                 "groups:read",
                 "groups:write",
                 "groups:write.invites",
@@ -59,13 +66,6 @@
                 "users.profile:read",
                 "users:read",
                 "users:read.email",
-                "channels:history",
-                "groups:history",
-                "chat:write.public",
-                "chat:write.customize",
-                "pins:write",
-                "files:read",
-                "files:write",
                 "usergroups:read",
                 "usergroups:write"
             ]
@@ -74,6 +74,9 @@
     "settings": {
         "event_subscriptions": {
             "bot_events": [
+                "channel_created",
+                "function_executed",
+                "member_joined_channel",
                 "message.channels",
                 "message.groups"
             ]
@@ -81,8 +84,10 @@
         "interactivity": {
             "is_enabled": true
         },
-        "org_deploy_enabled": false,
+        "org_deploy_enabled": true,
         "socket_mode_enabled": true,
-        "token_rotation_enabled": false
+        "token_rotation_enabled": false,
+        "hermes_app_type": "remote",
+        "function_runtime": "remote"
     }
 }

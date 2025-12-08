@@ -58,25 +58,6 @@ COMMANDS = [
     #     ],
     # },
     {
-        "name": "move",
-        "description": "Add members of one channel to another channel",
-        "function": move_handler,
-        "parameters": [
-            {
-                "name": "start",
-                "type": "channel",
-                "description": "Origin channel with all the users in",
-                "required": True,
-            },
-            {
-                "name": "end",
-                "type": "channel",
-                "description": "End channel that users will be moved to",
-                "required": True,
-            },
-        ],
-    },
-    {
         "name": "spoiler",
         "description": "Send a message hidden behind a spoiler button",
         "function": spoiler_handler,
@@ -119,6 +100,25 @@ COMMANDS = [
                 "type": "subteam",
                 "required": True,
                 "description": "The user group to join or leave",
+            },
+        ],
+    },
+    {
+        "name": "move",
+        "description": "Automatically move users from one channel to another",
+        "function": move_handler,
+        "parameters": [
+            {
+                "name": "start",
+                "type": "channel",
+                "description": "Origin channel with all the users in",
+                "required": False,
+            },
+            {
+                "name": "end",
+                "type": "channel",
+                "description": "End channel that users will be moved to",
+                "required": False,
             },
         ],
     },

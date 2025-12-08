@@ -7,7 +7,7 @@ from piccolo.columns.defaults.timestamptz import TimestamptzNow
 from piccolo.columns.indexes import IndexMethod
 
 
-ID = "2025-11-17T02:19:41:961777"
+ID = "2025-12-06T22:00:34:356497"
 VERSION = "1.30.0"
 DESCRIPTION = ""
 
@@ -18,19 +18,20 @@ async def forwards():
     )
 
     manager.add_table(
-        class_name="Spoiler", tablename="spoiler", schema=None, columns=None
+        class_name="MigrationConfig",
+        tablename="migration_config",
+        schema=None,
+        columns=None,
     )
 
     manager.add_column(
-        table_class_name="Spoiler",
-        tablename="spoiler",
+        table_class_name="MigrationConfig",
+        tablename="migration_config",
         column_name="id",
         db_column_name="id",
         column_class_name="Serial",
         column_class=Serial,
         params={
-            "length": 36,
-            "default": "",
             "null": False,
             "primary_key": True,
             "unique": False,
@@ -44,54 +45,10 @@ async def forwards():
     )
 
     manager.add_column(
-        table_class_name="Spoiler",
-        tablename="spoiler",
-        column_name="channel",
-        db_column_name="channel",
-        column_class_name="Varchar",
-        column_class=Varchar,
-        params={
-            "length": 20,
-            "default": "",
-            "null": False,
-            "primary_key": False,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="Spoiler",
-        tablename="spoiler",
-        column_name="message_ts",
-        db_column_name="message_ts",
-        column_class_name="Varchar",
-        column_class=Varchar,
-        params={
-            "length": 20,
-            "default": "",
-            "null": False,
-            "primary_key": False,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="Spoiler",
-        tablename="spoiler",
-        column_name="message",
-        db_column_name="message",
+        table_class_name="MigrationConfig",
+        tablename="migration_config",
+        column_name="channel_ids",
+        db_column_name="channel_ids",
         column_class_name="JSON",
         column_class=JSON,
         params={
@@ -109,10 +66,10 @@ async def forwards():
     )
 
     manager.add_column(
-        table_class_name="Spoiler",
-        tablename="spoiler",
-        column_name="user",
-        db_column_name="user",
+        table_class_name="MigrationConfig",
+        tablename="migration_config",
+        column_name="user_id",
+        db_column_name="user_id",
         column_class_name="Varchar",
         column_class=Varchar,
         params={
@@ -131,8 +88,8 @@ async def forwards():
     )
 
     manager.add_column(
-        table_class_name="Spoiler",
-        tablename="spoiler",
+        table_class_name="MigrationConfig",
+        tablename="migration_config",
         column_name="created_at",
         db_column_name="created_at",
         column_class_name="Timestamptz",
