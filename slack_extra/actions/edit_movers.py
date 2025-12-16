@@ -10,6 +10,7 @@ from slack_bolt.async_app import AsyncRespond
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.tables import MigrationConfig
+from slack_extra.utils.slack import is_admin
 
 
 async def edit_movers_handler(
@@ -19,7 +20,14 @@ async def edit_movers_handler(
 
     user_id = body["user"]["id"]
 
-    configs = await MigrationConfig.objects().where(MigrationConfig.user_id == user_id)
+    admin = await is_admin(user_id)
+
+    if admin:
+        configs = await MigrationConfig.objects()
+    else:
+        configs = await MigrationConfig.objects().where(
+            MigrationConfig.user_id == user_id
+        )
     select = StaticSelect().action_id("config")
     for config in configs:
         select.add_option(Option(text=config.name, value=str(config.id)))
