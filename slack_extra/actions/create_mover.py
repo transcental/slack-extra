@@ -34,6 +34,7 @@ async def create_mover_handler(
             .element(MultiChannelsSelect().action_id("channels"))
             .block_id("channels")
         )
+        .private_metadata("create")
         .submit("Setup!")
         .close("Cancel")
     ).build()

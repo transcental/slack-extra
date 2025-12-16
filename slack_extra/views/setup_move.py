@@ -15,6 +15,10 @@ async def setup_move_handler(ack: AsyncAck, body: dict, client: AsyncWebClient):
     values = view["state"]["values"]
     name = values["name"]["name"]["value"]
     channels = values["channels"]["channels"]["selected_channels"]
+    private_metadata = view["private_metadata"]
+    editing = True if "edit" in private_metadata else False
+    await send_heartbeat(f"{private_metadata.split(':')[-1]}")
+    config_val = int(private_metadata.split(":")[-1]) if editing else None
 
     allowed = [await is_channel_manager(user_id, c) for c in channels]
 
@@ -33,7 +37,7 @@ async def setup_move_handler(ack: AsyncAck, body: dict, client: AsyncWebClient):
             .where(MigrationChannel.channel_id == c)
             .first()
         )
-        if db_channel:
+        if db_channel and db_channel.config != config_val:
             exist.append(c)
 
     if exist:
@@ -59,14 +63,38 @@ async def setup_move_handler(ack: AsyncAck, body: dict, client: AsyncWebClient):
 
     try:
         async with MigrationConfig._meta.db.transaction():
-            conf = await MigrationConfig.insert(
-                MigrationConfig(name=name, user_id=user_id)
-            ).returning(MigrationConfig.id)
-            config_id = conf[0]["id"]
-            migration_channels = [
-                MigrationChannel(channel_id=c, config=config_id) for c in channels
-            ]
-            await MigrationChannel.insert(*migration_channels)
+            if editing:
+                await MigrationConfig.update({MigrationConfig.name: name}).where(
+                    MigrationConfig.id == config_val
+                )
+                config_id = config_val
+
+                existing_channels = await MigrationChannel.select(
+                    MigrationChannel.channel_id
+                ).where(MigrationChannel.config == config_id)
+                existing_channel_ids = {c["channel_id"] for c in existing_channels}
+
+                channels_to_delete = existing_channel_ids - set(channels)
+                if channels_to_delete:
+                    await MigrationChannel.delete().where(
+                        MigrationChannel.config == config_id,
+                        MigrationChannel.channel_id.is_in(list(channels_to_delete)),
+                    )
+
+                channels_to_add = set(channels) - existing_channel_ids
+            else:
+                conf = await MigrationConfig.insert(
+                    MigrationConfig(name=name, user_id=user_id)
+                ).returning(MigrationConfig.id)
+                config_id = conf[0]["id"]
+                channels_to_add = channels
+
+            if channels_to_add:
+                migration_channels = [
+                    MigrationChannel(channel_id=c, config=config_id)
+                    for c in channels_to_add
+                ]
+                await MigrationChannel.insert(*migration_channels)
     except Exception as e:
         await send_heartbeat(f"Error setting up migration for user {user_id}: {e}")
         return await ack(
@@ -76,10 +104,13 @@ async def setup_move_handler(ack: AsyncAck, body: dict, client: AsyncWebClient):
             },
         )
 
+    action = "Updated" if editing else "Setup"
     view = (
         Modal()
-        .title("Migration Setup!")
-        .add_block(Section(text="Your migration has been setup successfully :D"))
+        .title(f"Migration {action}!")
+        .add_block(
+            Section(text=f"Your migration has been {action.lower()} successfully :D")
+        )
         .close("Yippee!")
     ).build()
     await ack(response_action="update", view=view)
