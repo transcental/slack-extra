@@ -3,6 +3,7 @@ from slack_bolt.async_app import AsyncRespond
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.config import config
+from slack_extra.utils.slack import is_admin
 from slack_extra.utils.slack import is_channel_manager
 
 
@@ -17,6 +18,14 @@ async def delete_message_handler(
         return await respond("Something went quite badly wrong")
     bot_id = shortcut.get("message", {}).get("bot_id")
     author = shortcut.get("message", {}).get("user")
+
+    admin = await is_admin(user_id)
+    if admin:
+        await client.chat_delete(
+            ts=ts, channel=channel_id, token=config.slack.user_token
+        )
+        return
+
     if bot_id or author == "USLACKBOT":
         can_delete = await is_channel_manager(user_id, channel_id)
         if not can_delete:
