@@ -19,6 +19,12 @@ async def delete_message_handler(
     bot_id = shortcut.get("message", {}).get("bot_id")
     author = shortcut.get("message", {}).get("user")
 
+    if author == user_id:
+        await client.chat_delete(
+            ts=ts, channel=channel_id, token=config.slack.user_token
+        )
+        return
+
     admin = await is_admin(user_id)
     if admin:
         await client.chat_delete(
