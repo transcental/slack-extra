@@ -105,7 +105,7 @@ COMMANDS = [
     },
     {
         "name": "move",
-        "description": "Automatically move users from one channel to another",
+        "description": "Move users from a channel to another channel or user group",
         "function": move_handler,
         "parameters": [
             {
@@ -116,8 +116,8 @@ COMMANDS = [
             },
             {
                 "name": "end",
-                "type": "channel",
-                "description": "End channel that users will be moved to",
+                "type": "channel_or_subteam",
+                "description": "End channel or user group that users will be moved to",
                 "required": False,
             },
         ],
@@ -155,13 +155,14 @@ def _normalize_channel_token(token: str) -> str | None:
 
     Supported forms:
     - <#C123ABC|name>
+    - <#C123ABC|>
     - <#C123ABC>
     - C123ABC or G123ABC
     """
     if not isinstance(token, str):
         return None
 
-    m = re.match(r"^<#([CG][A-Z0-9]+)(?:\|[^>]+)?>$", token)
+    m = re.match(r"^<#([CG][A-Z0-9]+)(?:\|[^>]*)?>$", token)
     if m:
         return m.group(1)
 
@@ -253,7 +254,7 @@ def _assign_tokens_to_params(
         ) or _normalize_channel_token(tok_str):
             logging.debug("Token '%s' detected as channel-like", tok_str)
             for i in free_indices:
-                if params[i].get("type") == "channel":
+                if params[i].get("type") in ("channel", "channel_or_subteam"):
                     chosen_idx = i
                     logging.debug(
                         " -> will assign token '%s' to channel param index %s (name=%s)",
@@ -291,7 +292,7 @@ def _assign_tokens_to_params(
         if chosen_idx is None and _normalize_subteam_token(tok_str):
             logging.debug("Token '%s' detected as subteam-like", tok_str)
             for i in free_indices:
-                if params[i].get("type") == "subteam":
+                if params[i].get("type") in ("subteam", "channel_or_subteam"):
                     chosen_idx = i
                     logging.debug(
                         " -> will assign token '%s' to subteam param index %s (name=%s)",
@@ -361,9 +362,13 @@ async def _find_channel_id_by_name(client: AsyncWebClient, name: str) -> str | N
     try:
         cursor = None
         while True:
-            # Request both public and private channels where the bot is a member
+            # Request both public and private channels, exclude archived
+            # Use exclude_archived to get all channels, not just ones bot is member of
             resp = await client.conversations_list(
-                limit=200, cursor=cursor, types="public_channel,private_channel"
+                limit=200,
+                cursor=cursor,
+                types="public_channel,private_channel",
+                exclude_archived=True,
             )
             data = getattr(resp, "data", resp) if resp is not None else {}
             channels = []
@@ -388,6 +393,35 @@ async def _find_channel_id_by_name(client: AsyncWebClient, name: str) -> str | N
         )
     except Exception:
         logging.exception("Error looking up channel by name")
+    return None
+
+
+async def _find_usergroup_id_by_handle(
+    client: AsyncWebClient, handle: str
+) -> str | None:
+    """
+    Look up a usergroup id by its handle (like '@foo' or 'foo').
+    Returns the usergroup id (e.g. 'S123ABC') or None if not found.
+    """
+    if not isinstance(handle, str) or handle.strip() == "":
+        return None
+    lookup_handle = handle.strip().lstrip("@")
+    try:
+        resp = await client.usergroups_list(include_disabled=False)
+        data = getattr(resp, "data", resp) if resp is not None else {}
+        usergroups = []
+        if isinstance(data, dict):
+            usergroups = data.get("usergroups") or []
+        for ug in usergroups:
+            ug_handle = ug.get("handle")
+            if ug_handle == lookup_handle:
+                return ug.get("id")
+    except SlackApiError as e:
+        logging.debug(
+            f"Slack API error looking up usergroup handle '{handle}': {getattr(e, 'response', str(e))}"
+        )
+    except Exception:
+        logging.exception("Error looking up usergroup by handle")
     return None
 
 
@@ -719,6 +753,54 @@ def register_commands(app: AsyncApp):
                                 f"Parameter '{pname}' must be a usergroup mention or ID (e.g. <!subteam^S12345|@groupname> or S12345)."
                             )
                             continue
+
+                    elif ptype == "channel_or_subteam":
+                        # Accept either a channel or a subteam (user group)
+                        if not isinstance(raw_val, str):
+                            errors.append(
+                                f"Parameter '{pname}' must be a channel or usergroup mention/ID."
+                            )
+                            continue
+                        raw_val_stripped = raw_val.strip()
+                        # Try channel first
+                        chan = _normalize_channel_token(raw_val_stripped)
+                        if chan:
+                            value = chan
+                        else:
+                            # Try subteam
+                            s_id = _normalize_subteam_token(raw_val_stripped)
+                            if s_id:
+                                value = s_id
+                            else:
+                                # Try to resolve as channel name first
+                                try:
+                                    resolved = await _find_channel_id_by_name(
+                                        client, raw_val_stripped
+                                    )
+                                    if resolved:
+                                        value = resolved
+                                    else:
+                                        # Try to resolve as usergroup handle (e.g. @group-name or group-name)
+                                        ug_resolved = (
+                                            await _find_usergroup_id_by_handle(
+                                                client, raw_val_stripped
+                                            )
+                                        )
+                                        if ug_resolved:
+                                            value = ug_resolved
+                                        else:
+                                            errors.append(
+                                                f"Parameter '{pname}' must be a channel or usergroup (e.g. #channel-name or @group-name)."
+                                            )
+                                            continue
+                                except Exception:
+                                    logging.exception(
+                                        "Error resolving channel/usergroup name"
+                                    )
+                                    errors.append(
+                                        f"Parameter '{pname}' must be a channel or usergroup mention/ID."
+                                    )
+                                    continue
 
                     else:
                         # string or unknown types => treat as string and decode escape sequences
