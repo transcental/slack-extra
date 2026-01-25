@@ -2,7 +2,6 @@ from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncRespond
 from slack_sdk.web.async_client import AsyncWebClient
 
-from slack_extra.utils.logging import send_heartbeat
 from slack_extra.utils.slack import get_channel_managers
 
 
@@ -25,10 +24,6 @@ async def info_handler(
     from slack_extra.env import env
 
     res = "Oops, something went wrong."
-    await send_heartbeat(
-        heartbeat="info_handler invoked",
-        messages=[f"Channel: <#{channel}>\nLocation: <#{location}>"],
-    )
 
     channel = location if not channel else channel
 
