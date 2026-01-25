@@ -21,7 +21,7 @@ async def delete_message_handler(
     bot_id = shortcut.get("message", {}).get("bot_id")
     author = shortcut.get("message", {}).get("user")
 
-    if channel_id.startswith("D") or author == user_id:
+    if (channel_id.startswith("D") and author == user_id) or author == user_id:
         # do oauth logic and use user token
         team_info = await client.team_info()
         team_id = team_info.get("team", {}).get("id") or "T0266FRGM"
