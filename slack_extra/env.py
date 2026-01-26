@@ -32,6 +32,12 @@ class Environment:
         self.http = ClientSession()
         self.slack_client = AsyncWebClient(token=config.slack.bot_token)
 
+        register_commands(env.app)
+        register_shortcuts(env.app)
+        register_actions(env.app)
+        register_views(env.app)
+        register_events(env.app)
+
         handler = None
         if config.slack.app_token:
             if config.environment == "production":
@@ -45,12 +51,6 @@ class Environment:
             handler = AsyncSocketModeHandler(self.app, config.slack.app_token)
             logger.debug("Starting Socket Mode handler")
             await handler.connect_async()
-
-        register_commands(env.app)
-        register_shortcuts(env.app)
-        register_actions(env.app)
-        register_views(env.app)
-        register_events(env.app)
 
         logger.debug(f"Environment setup in {time() - st:.02}s")
         await send_heartbeat(

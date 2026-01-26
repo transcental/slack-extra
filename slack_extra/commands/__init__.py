@@ -120,6 +120,12 @@ COMMANDS = [
                 "description": "End channel that users will be moved to",
                 "required": False,
             },
+            {
+                "name": "exclude",
+                "type": "string",
+                "description": "Comma-separated list of user IDs to exclude from moving",
+                "required": False,
+            },
         ],
     },
 ]

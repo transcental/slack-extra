@@ -1,3 +1,4 @@
+import re
 import traceback
 from asyncio import sleep
 
@@ -24,6 +25,7 @@ async def move_handler(
     command: dict,
     start: str | None = None,
     end: str | None = None,
+    exclude: str | None = None,
 ):
     await ack()
     ran = f"\n_You ran `{raw_command}`_"
@@ -41,7 +43,7 @@ async def move_handler(
         finished = False
         channel_members = []
         cursor = None
-        await respond("Joining both channels")
+        await send_heartbeat("Joining both channels")
         try:
             channels = [start, end]
             for c in channels:
@@ -55,10 +57,14 @@ async def move_handler(
             tb = traceback.format_exception(e)
 
             tb_str = "".join(tb)
+            await send_heartbeat(
+                "Uh oh! Something went wrong when moving D:",
+                messages=[f"```{tb_str}```"],
+            )
             await respond(
                 f"Something went wrong trying to join the channels\n```{tb_str}```{ran}"
             )
-        await respond(f"Fetching members from <#{start}>...")
+
         while not finished:
             try:
                 data = await client.conversations_members(
@@ -86,9 +92,14 @@ async def move_handler(
                     messages=[f"```{tb_str}```"],
                 )
 
-        await respond(
-            f"{len(channel_members)} members fetched from <#{start}>! Adding to <#{end}>"
+        await send_heartbeat(
+            f"<@{performer}> - {len(channel_members)} members fetched from <#{start}>! Adding to <#{end}>"
         )
+        if exclude:
+            ids = re.findall(r"<@([^|]+)\|", exclude)
+            await send_heartbeat(f"Excluding users: `{ids}`")
+            channel_members = [m for m in channel_members if m not in ids]
+            return
 
         while len(channel_members) > 0:
             try:
@@ -115,7 +126,9 @@ async def move_handler(
                     messages=[f"```{tb_str}```"],
                 )
 
-        await respond(f"Moved members from <#{start}> to <#{end}>")
+        await respond(
+            f"Moved {len(channel_members)} members from <#{start}> to <#{end}>"
+        )
         return
 
     view = (
