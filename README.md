@@ -13,7 +13,7 @@ Slack. Enhanced.
 
 1. Go to [https://api.slack.com/apps](https://api.slack.com/apps) and click "Create New App".
 2. Choose "From an app manifest" and select your workspace.
-3. Copy and paste the manifest in `manifest.yml`, replacing `YOUR_URL` with your URL (we'll set this up later):
+3. Copy and paste the manifest in `manifest.yml`, replacing `YOUR_URL` with your URL (we'll set this up later). Also change the command to be `/your-name-se` (ie: `/amber-se`) instead of `/dev-se` (You will need to change this in `register_commands()` in `commands/__init__.py` too):
 4. Review and create the app.
 5. In the "Basic Information" section, note down the `App Id`, `Client Id`, `Client Secret`, `Signing Secret` .
 6. Go to "OAuth & Permissions" and install the app to your workspace. Note down the "Bot User OAuth Token".
