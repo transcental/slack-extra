@@ -7,7 +7,7 @@ from slack_extra.utils.slack import get_channel_managers
 
 HACKATIME_ENDPOINT = "https://hackatime.hackclub.com/api/v1/users/slackid/trust_factor"
 IDENTITY_ENDPOINT = "https://identity.hackclub.com/api/external/check"
-JOE_ENDPOINT = "https://dash.fraud.land/profile/"
+JOE_ENDPOINT = "https://joe.fraud.hackclub.com/profile/"
 
 
 async def info_handler(
