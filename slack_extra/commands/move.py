@@ -52,7 +52,7 @@ async def move_handler(
                 except SlackApiError as e:
                     error = e.response.get("error")
                     if error in ["channel_not_found", ""]:
-                        await respond(f"Failed to join <#{c} - `{error}`{ran}")
+                        await respond(f"Failed to join <#{c}> - `{error}`{ran}")
         except Exception as e:
             tb = traceback.format_exception(e)
 
