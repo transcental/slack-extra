@@ -99,7 +99,6 @@ async def move_handler(
             ids = re.findall(r"<@([^|]+)\|", exclude)
             await send_heartbeat(f"Excluding users: `{ids}`")
             channel_members = [m for m in channel_members if m not in ids]
-            return
 
         while len(channel_members) > 0:
             try:
