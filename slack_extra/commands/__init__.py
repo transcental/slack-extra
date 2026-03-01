@@ -15,6 +15,7 @@ from slack_extra.commands.info import info_handler
 from slack_extra.commands.move import move_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
+from slack_extra.utils.logging import send_heartbeat
 # from slack_extra.commands.manager import manager_handler
 
 COMMANDS = [
@@ -452,6 +453,11 @@ def register_commands(app: AsyncApp):
         await ack()
         user_id = command.get("user_id")
         raw_text = command.get("text", "")
+
+        await send_heartbeat(
+            f"<@{user_id}> ({user_id}) ran {raw_text}", [f"```{command}```"]
+        )
+
         ran = f"\n_You ran `{COMMAND_PREFIX} {raw_text}`_" if raw_text else ""
 
         try:
