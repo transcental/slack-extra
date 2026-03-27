@@ -17,9 +17,14 @@ async def love_handler(
     responses = [
         "awh, i love you too <3",
         "<3",
-        ":orange_heart:",
+        ":amber_heart:",
         ":heart-eng:",
         "you're so sweet :pleading_face:",
         ":rac_shy:",
+        ":3",
+        ":rac_love:",
+        ":neodog_heart:",
+        "love you too <3",
+        ":dogheart:",
     ]
     await respond(random.choice(responses))
