@@ -12,6 +12,7 @@ from slack_sdk.web.async_client import AsyncWebClient
 from slack_extra.commands.anchor import anchor_handler
 from slack_extra.commands.group import group_handler
 from slack_extra.commands.info import info_handler
+from slack_extra.commands.love import love_handler
 from slack_extra.commands.move import move_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
@@ -129,6 +130,7 @@ COMMANDS = [
             },
         ],
     },
+    {"name": "<3", "description": "<3", "function": love_handler, "hidden": True},
 ]
 
 
@@ -441,7 +443,9 @@ def register_commands(app: AsyncApp):
                 return f"[{display}]"
 
         params = " ".join([_param_display(param) for param in parameters])
-        if cmd.get("admin"):
+        if cmd.get("hidden"):
+            continue
+        elif cmd.get("admin"):
             admin_help += f"- `{COMMAND_PREFIX} {cmd['name']}{f' {params}' if params else ''}`: {cmd['description']}\n"
         else:
             help += f"- `{COMMAND_PREFIX} {cmd['name']}{f' {params}' if params else ''}`: {cmd['description']}\n"
@@ -492,6 +496,10 @@ def register_commands(app: AsyncApp):
             return
 
         command_name = tokens[0] if tokens else ""
+        # Slack may HTML-encode angle brackets in command text (e.g. "<3" -> "&lt;3")
+        command_name = (
+            command_name.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+        )
         for cmd in COMMANDS:
             if cmd["name"] != command_name:
                 continue
