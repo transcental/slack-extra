@@ -1,201 +1,13 @@
-import logging
+from typing import Literal
 
 from slack_bolt.async_app import AsyncAck
 from slack_bolt.async_app import AsyncRespond
-from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
-from slack_extra.config import config
-from slack_extra.datastore import PiccoloInstallationStore
-from slack_extra.utils.oauth import generate_oauth_url
-
-logger = logging.getLogger(__name__)
-
-MANAGER_FIELD_ID = "Xf09727DH1J8"
-
-
-async def _is_admin_or_owner(
-    client: AsyncWebClient, user_id: str, team_id: str
-) -> bool:
-    try:
-        user_info = await client.users_info(user=user_id)
-        if not user_info.get("ok"):
-            return False
-
-        user_data = user_info.get("user", {})
-        is_admin = user_data.get("is_admin", False)
-        is_owner = user_data.get("is_owner", False)
-        is_primary_owner = user_data.get("is_primary_owner", False)
-
-        return is_admin or is_owner or is_primary_owner
-    except SlackApiError as e:
-        logger.error(f"Error checking user admin status: {e}")
-        return False
-
-
-async def _get_current_managers(client: AsyncWebClient, user_id: str) -> list[str]:
-    try:
-        profile_response = await client.users_profile_get(user=user_id)
-
-        if not profile_response.get("ok"):
-            logger.error(f"Failed to get user profile: {profile_response}")
-            return []
-
-        profile = profile_response.get("profile", {})
-        fields = profile.get("fields", {})
-        manager_field = fields.get(MANAGER_FIELD_ID, {})
-
-        value = manager_field.get("value")
-        if not value:
-            return []
-
-        if isinstance(value, str):
-            return value.split(",")
-
-        return []
-    except SlackApiError as e:
-        logger.error(f"Error fetching current managers: {e}")
-        return []
-
-
-async def _update_managers(
-    client: AsyncWebClient, user_id: str, managers: list[str], token: str | None = None
-) -> bool:
-    try:
-        profile = {
-            "fields": {MANAGER_FIELD_ID: {"value": ",".join(managers), "alt": ""}}
-        }
-
-        if not token:
-            token = config.slack.user_token
-
-        response = await client.users_profile_set(
-            user=user_id, token=token, profile=profile
-        )
-
-        return response.get("ok", False)
-    except SlackApiError as e:
-        logger.error(f"Error updating managers: {e}")
-        return False
-
-
-async def manager_add_handler(
-    ack: AsyncAck,
-    client: AsyncWebClient,
-    respond: AsyncRespond,
-    performer: str,
-    manager: str,
-    ran: str,
-):
-    await ack()
-
-    user = performer
-
-    team_info = await client.team_info()
-    team_id = team_info.get("team", {}).get("id") or "T0266FRGM"
-
-    is_privileged = await _is_admin_or_owner(client, performer, team_id)
-
-    user_token = None
-    if is_privileged:
-        installation_store = PiccoloInstallationStore()
-        installation = await installation_store.async_find_installation(
-            enterprise_id=None, team_id=team_id, user_id=performer
-        )
-
-        if not installation or not installation.user_token:
-            oauth_url = await generate_oauth_url(user_scopes=["users.profile:write"])
-
-            await respond(
-                f"⚠️ You are a workspace admin/owner and need to authorize with OAuth to edit your profile.\n\n"
-                f"Click here to authorize: <{oauth_url}|Authorise App>\n\n"
-                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope._{ran}"
-            )
-            return
-        if (
-            installation.user_scopes
-            and "users.profile:write" not in installation.user_scopes
-        ):
-            scopes: list = installation.user_scopes  # type: ignore (This is a list)
-            scopes.append("users.profile:write")
-            oauth_url = await generate_oauth_url(user_scopes=scopes)
-
-            await respond(
-                f"⚠️ You are a workspace admin/owner and need to authorize with OAuth to edit your profile.\n\n"
-                f"Click here to authorize: <{oauth_url}|Authorise App>\n\n"
-                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope and any scopes you've previously authorised._{ran}"
-            )
-            return
-
-        user_token = installation.user_token
-
-    current_managers = await _get_current_managers(client, user)
-
-    if manager in current_managers:
-        await respond(f"<@{manager}> is already one of your managers.{ran}")
-        return
-
-    updated_managers = current_managers + [manager]
-
-    success = await _update_managers(client, user, updated_managers, user_token)
-
-    if success:
-        await respond(f"added <@{manager}> as your manager!")
-    else:
-        await respond(f"i failed to add your manager. {ran}")
-
-
-async def manager_remove_handler(
-    ack: AsyncAck,
-    client: AsyncWebClient,
-    respond: AsyncRespond,
-    performer: str,
-    manager: str,
-    ran: str,
-):
-    await ack()
-
-    user = performer
-
-    team_info = await client.team_info()
-    team_id = team_info.get("team", {}).get("id") or "T0266FRGM"
-
-    is_privileged = await _is_admin_or_owner(client, performer, team_id)
-
-    user_token = None
-    if is_privileged:
-        installation_store = PiccoloInstallationStore()
-        installation = await installation_store.async_find_installation(
-            enterprise_id=None, team_id=team_id, user_id=performer
-        )
-
-        if not installation or not installation.user_token:
-            oauth_url = await generate_oauth_url(user_scopes=["users.profile:write"])
-
-            await respond(
-                f"⚠️ You are a workspace admin/owner and need to authorize with OAuth to edit your profile.\n\n"
-                f"Click here to authorize: <{oauth_url}|Authorize App>\n\n"
-                f"_This will grant the app permission to edit your profile on your behalf with the `users.profile:write` scope._{ran}"
-            )
-            return
-
-        user_token = installation.user_token
-
-    current_managers = await _get_current_managers(client, user)
-    logging.debug(f"{manager} vs {current_managers}")
-
-    if manager not in current_managers:
-        await respond(f"<@{manager}> is not one of your managers.{ran}")
-        return
-
-    updated_managers = [m for m in current_managers if m != manager]
-
-    success = await _update_managers(client, user, updated_managers, user_token)
-
-    if success:
-        await respond(f"removed <@{manager}> as your manager.")
-    else:
-        await respond(f"i couldn't remove your manager :({ran}")
+from slack_extra.utils.slack import add_channel_manager
+from slack_extra.utils.slack import get_channel_managers
+from slack_extra.utils.slack import is_channel_manager
+from slack_extra.utils.slack import remove_channel_manager
 
 
 async def manager_handler(
@@ -203,12 +15,86 @@ async def manager_handler(
     client: AsyncWebClient,
     respond: AsyncRespond,
     performer: str,
-    action: str,
-    manager: str,
+    location: str,
     raw_command: str,
+    action: Literal["get", "add", "remove"],
+    user: str | None = None,
 ):
+    await ack()
     ran = f"\n_You ran `{raw_command}`_"
-    if action == "add":
-        await manager_add_handler(ack, client, respond, performer, manager, ran)
-    elif action == "remove":
-        await manager_remove_handler(ack, client, respond, performer, manager, ran)
+
+    managers = await get_channel_managers(location)
+    match action:
+        case "get":
+            if performer in managers:
+                return await respond(f"You're already a channel manager!{ran}")
+
+            allowed = await is_channel_manager(performer, location)
+            if managers and (not allowed or performer in managers):
+                manager_mentions = ", ".join([f"<@{mgr}>" for mgr in managers])
+                return await respond(
+                    f"There are already managers for this channel - please get one of them to give you channel manager.\nManagers: {manager_mentions}{ran}"
+                )
+
+            channel_info = await client.conversations_info(channel=location)
+            creator = channel_info.get("channel", {}).get("creator")
+
+            if not creator and not allowed:
+                return await respond(
+                    f"Something went wrong fetching channel info!{ran}"
+                )
+
+            success, res = await add_channel_manager(performer, location)
+
+            if success:
+                return await respond(
+                    f"You're now the channel manager for <#{location}>{ran}"
+                )
+            else:
+                if res.get("error", "") == "no_valid_users":
+                    return await respond(
+                        f"You must be in the channel to be set as a channel manager{ran}"
+                    )
+                return await respond(
+                    f"Something went wrong setting you as the channel manager :({ran}"
+                )
+        case "add" | "remove":
+            if not user:
+                return await respond(f"You need to specify a user to update!{ran}")
+
+            allowed = await is_channel_manager(performer, location)
+            if not allowed:
+                return await respond(
+                    f"You need to be a channel manager to manage channel managers! Created this channel? Try `/se manager get`{ran}"
+                )
+            if action == "add":
+                if user in managers:
+                    return await respond(
+                        f"<@{user}> is already a channel manager!{ran}"
+                    )
+                success, res = await add_channel_manager(user, location)
+                if success:
+                    return await respond(f"<@{user}> is now a channel manager!{ran}")
+                else:
+                    error = res.get("error", "")
+                    if error == "no_valid_users":
+                        return await respond(
+                            f"<@{user}> must be in the channel to be a channel manager!{ran}"
+                        )
+                    else:
+                        return await respond(
+                            f"Failed to add <@{user}> as a channel manager - `{error}`!{ran}"
+                        )
+            elif action == "remove":
+                if user not in managers:
+                    return await respond(f"<@{user}> is not a channel manager!{ran}")
+                success, res = await remove_channel_manager(user, location)
+                if success:
+                    return await respond(
+                        f"<@{user}> is no longer a channel manager!{ran}"
+                    )
+                else:
+                    error = res.get("error", "")
+                    return await respond(
+                        f"Failed to remove <@{user}> as a channel manager - `{error}`!{ran}"
+                    )

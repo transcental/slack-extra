@@ -2,6 +2,68 @@ from slack_extra.config import config
 from slack_extra.utils.logging import send_heartbeat
 
 
+async def remove_channel_manager(user_id: str, channel_id: str) -> tuple[bool, dict]:
+    from slack_extra.env import env
+
+    data = {
+        "token": config.slack.xoxc_token,
+        "role_id": "Rl0A",
+        "role_scopes": channel_id,
+        "user_ids": user_id,
+    }
+    headers = {"Cookie": f"d={config.slack.xoxd_token}"}
+
+    async with env.http.post(
+        "https://slack.com/api/admin.roles.removeMembers?_x_gantry=false",
+        data=data,
+        headers=headers,
+    ) as resp:
+        res = await resp.json()
+        if res.get("ok"):
+            await send_heartbeat(
+                f"<@{user_id}> is no longer a channel manager in <#{channel_id}>",
+                messages=[f"```{res}```"],
+            )
+            return True, res
+        else:
+            await send_heartbeat(
+                f":warning: Failed to remove <@{user_id}> as a channel manager in <#{channel_id}>",
+                messages=[f"```{res}```"],
+            )
+            return False, res
+
+
+async def add_channel_manager(user_id: str, channel_id: str) -> tuple[bool, dict]:
+    from slack_extra.env import env
+
+    data = {
+        "token": config.slack.xoxc_token,
+        "role_id": "Rl0A",
+        "role_scopes": channel_id,
+        "user_ids": user_id,
+    }
+    headers = {"Cookie": f"d={config.slack.xoxd_token}"}
+
+    async with env.http.post(
+        "https://slack.com/api/admin.roles.addMembers?_x_gantry=false",
+        data=data,
+        headers=headers,
+    ) as resp:
+        res = await resp.json()
+        if res.get("ok"):
+            await send_heartbeat(
+                f"<@{user_id}> is now a channel manager in <#{channel_id}>",
+                messages=[f"```{res}```"],
+            )
+            return True, res
+        else:
+            await send_heartbeat(
+                f":warning: Failed to add <@{user_id}> as a channel manager in <#{channel_id}>",
+                messages=[f"```{res}```"],
+            )
+            return False, res
+
+
 async def get_channel_managers(channel_id: str) -> list[str]:
     from slack_extra.env import env
 

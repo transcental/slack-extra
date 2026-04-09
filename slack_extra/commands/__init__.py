@@ -13,6 +13,7 @@ from slack_extra.commands.anchor import anchor_handler
 from slack_extra.commands.group import group_handler
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.love import love_handler
+from slack_extra.commands.manager import manager_handler
 from slack_extra.commands.move import move_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
@@ -39,26 +40,26 @@ COMMANDS = [
             },
         ],
     },
-    # {
-    #     "name": "manager",
-    #     "description": "Manage your managers",
-    #     "function": manager_handler,
-    #     "parameters": [
-    #         {
-    #             "name": "action",
-    #             "type": "choice",
-    #             "choices": ["add", "remove"],
-    #             "description": "Action to perform",
-    #             "required": True,
-    #         },
-    #         {
-    #             "name": "manager",
-    #             "type": "user",
-    #             "description": "Manager to add or remove",
-    #             "required": True,
-    #         },
-    #     ],
-    # },
+    {
+        "name": "manager",
+        "description": "Manage your channel managers",
+        "function": manager_handler,
+        "parameters": [
+            {
+                "name": "action",
+                "type": "choice",
+                "choices": ["get", "add", "remove"],
+                "description": "Action to perform",
+                "required": True,
+            },
+            {
+                "name": "user",
+                "type": "user",
+                "description": "Channel manager to add or remove",
+                "required": False,
+            },
+        ],
+    },
     {
         "name": "spoiler",
         "description": "Send a message hidden behind a spoiler button",
