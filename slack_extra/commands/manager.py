@@ -39,10 +39,8 @@ async def manager_handler(
             channel_info = await client.conversations_info(channel=location)
             creator = channel_info.get("channel", {}).get("creator")
 
-            if not creator and not allowed:
-                return await respond(
-                    f"Something went wrong fetching channel info!{ran}"
-                )
+            if performer != creator and not allowed:
+                return await respond(f"You can't claim that channel!{ran}")
 
             success, res = await add_channel_manager(performer, location)
 
