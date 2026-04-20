@@ -25,7 +25,7 @@ async def create_mover_handler(
         .add_block(
             Input()
             .label("Name")
-            .element(PlainTextInput().action_id("name"))
+            .element(PlainTextInput().action_id("name").max_length(71))
             .block_id("name")
         )
         .add_block(
