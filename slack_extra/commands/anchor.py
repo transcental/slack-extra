@@ -46,12 +46,17 @@ async def anchor_handler(
         if e.response["error"] == "channel_not_found":
             await respond("please add me to the channel first!")
             return
-        if e.response["error"] == "method_not_supported_for_channel_type":
-            await respond(
-                "oops! anchor doesn't support direct messages or multi-person direct messages."
-            )
-            return
-        if e.response["error"] == "too_many_members":
+        elif e.response["error"] == "method_not_supported_for_channel_type":
+            channel_info = await client.conversations_info(channel=channel)
+            allowed_type = channel_info.get("channel", {}).get(
+                "is_group", False
+            ) or channel_info.get("channel", {}).get("is_channel", False)
+            if not allowed_type:
+                await respond(
+                    "oops! anchor doesn't support direct messages or multi-person direct messages."
+                )
+                return
+        elif e.response["error"] == "too_many_members":
             await respond("looks like this channel is full D:")
             return
         else:
