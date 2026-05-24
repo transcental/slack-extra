@@ -10,15 +10,14 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.commands.channel.anchor import anchor_handler
+from slack_extra.commands.channel.manager import manager_handler
 from slack_extra.commands.channel.move import move_handler
 from slack_extra.commands.group import group_handler
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.love import love_handler
-from slack_extra.commands.manager import manager_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
 from slack_extra.utils.logging import send_heartbeat
-# from slack_extra.commands.manager import manager_handler
 
 COMMANDS = [
     {
@@ -37,26 +36,6 @@ COMMANDS = [
                 "type": "channel",
                 "description": "Channel mention or id",
                 "default": None,
-            },
-        ],
-    },
-    {
-        "name": "manager",
-        "description": "Manage your channel managers",
-        "function": manager_handler,
-        "parameters": [
-            {
-                "name": "action",
-                "type": "choice",
-                "choices": ["get", "add", "remove"],
-                "description": "Action to perform",
-                "required": True,
-            },
-            {
-                "name": "user",
-                "type": "user",
-                "description": "Channel manager to add or remove",
-                "required": False,
             },
         ],
     },
@@ -135,6 +114,26 @@ COMMANDS = [
                     }
                 ],
             },
+            {
+                "name": "manager",
+                "description": "Manage your channel managers",
+                "function": manager_handler,
+                "parameters": [
+                    {
+                        "name": "action",
+                        "type": "choice",
+                        "choices": ["get", "add", "remove"],
+                        "description": "Action to perform",
+                        "required": True,
+                    },
+                    {
+                        "name": "user",
+                        "type": "user",
+                        "description": "Channel manager to add or remove",
+                        "required": False,
+                    },
+                ],
+            },
         ],
     },
     {
@@ -148,6 +147,12 @@ COMMANDS = [
         "alias_of": "channel move",
         "hidden": True,
         "description": "Alias for channel move",
+    },
+    {
+        "name": "manager",
+        "alias_of": "channel manager",
+        "hidden": True,
+        "description": "Alias for channel manager",
     },
     {"name": "<3", "description": "<3", "function": love_handler, "hidden": True},
 ]
