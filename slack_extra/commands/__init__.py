@@ -9,12 +9,12 @@ from slack_bolt.async_app import AsyncRespond
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
-from slack_extra.commands.anchor import anchor_handler
+from slack_extra.commands.channel.anchor import anchor_handler
+from slack_extra.commands.channel.move import move_handler
 from slack_extra.commands.group import group_handler
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.love import love_handler
 from slack_extra.commands.manager import manager_handler
-from slack_extra.commands.move import move_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
 from slack_extra.utils.logging import send_heartbeat
@@ -74,19 +74,6 @@ COMMANDS = [
         ],
     },
     {
-        "name": "anchor",
-        "description": "Anchor a message in the current channel",
-        "function": anchor_handler,
-        "parameters": [
-            {
-                "name": "action",
-                "type": "choice",
-                "choices": ["enable", "disable"],
-                "required": False,
-            }
-        ],
-    },
-    {
         "name": "group",
         "description": "Join or leave a user group!",
         "function": group_handler,
@@ -135,7 +122,26 @@ COMMANDS = [
                     },
                 ],
             },
+            {
+                "name": "anchor",
+                "description": "Anchor a message in the current channel",
+                "function": anchor_handler,
+                "parameters": [
+                    {
+                        "name": "action",
+                        "type": "choice",
+                        "choices": ["enable", "disable"],
+                        "required": False,
+                    }
+                ],
+            },
         ],
+    },
+    {
+        "name": "anchor",
+        "alias_of": "channel anchor",
+        "hidden": True,
+        "description": "Alias for channel anchor",
     },
     {
         "name": "move",
