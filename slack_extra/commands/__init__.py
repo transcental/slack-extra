@@ -107,29 +107,41 @@ COMMANDS = [
         ],
     },
     {
-        "name": "move",
-        "description": "Automatically move users from one channel to another",
-        "function": move_handler,
-        "parameters": [
+        "name": "channel",
+        "description": "Channel management commands",
+        "subcommands": [
             {
-                "name": "start",
-                "type": "channel",
-                "description": "Origin channel with all the users in",
-                "required": False,
-            },
-            {
-                "name": "end",
-                "type": "channel",
-                "description": "End channel that users will be moved to",
-                "required": False,
-            },
-            {
-                "name": "exclude",
-                "type": "string",
-                "description": "Comma-separated list of user IDs to exclude from moving",
-                "required": False,
+                "name": "move",
+                "description": "Automatically move users from one channel to another",
+                "function": move_handler,
+                "parameters": [
+                    {
+                        "name": "start",
+                        "type": "channel",
+                        "description": "Origin channel with all the users in",
+                        "required": False,
+                    },
+                    {
+                        "name": "end",
+                        "type": "channel",
+                        "description": "End channel that users will be moved to",
+                        "required": False,
+                    },
+                    {
+                        "name": "exclude",
+                        "type": "string",
+                        "description": "Comma-separated list of user IDs to exclude from moving",
+                        "required": False,
+                    },
+                ],
             },
         ],
+    },
+    {
+        "name": "move",
+        "alias_of": "channel move",
+        "hidden": True,
+        "description": "Alias for channel move",
     },
     {"name": "<3", "description": "<3", "function": love_handler, "hidden": True},
 ]
@@ -403,53 +415,85 @@ async def _find_channel_id_by_name(client: AsyncWebClient, name: str) -> str | N
 
 def register_commands(app: AsyncApp):
     COMMAND_PREFIX = "/se" if config.environment == "production" else "/dev-se"
-    admin_help = ""
-    help = "Available commands:\n"
 
-    # Validate command definitions (particularly `choice` parameter definitions).
-    # A 'choice' parameter MUST include a non-empty list/tuple under the 'choices' key.
-    for cmd in COMMANDS:
-        for p in cmd.get("parameters", []) or []:
-            if p.get("type") == "choice":
-                choices = p.get("choices")
-                if (
-                    not choices
-                    or not isinstance(choices, (list, tuple))
-                    or len(choices) == 0
-                ):
-                    raise ValueError(
-                        f"Command '{cmd.get('name')}' parameter '{p.get('name')}' is type 'choice' but 'choices' is missing or invalid."
-                    )
-
-        parameters = cmd.get("parameters", [])
-        if "current_user" in [p.get("type") for p in parameters]:
-            cmd["parameters"] = [
-                p for p in parameters if p.get("type") != "current_user"
-            ]
-
-        def _param_display(param: dict[str, Any]) -> str:
-            name = param.get("name")
-            if param.get("type") == "choice":
-                choices = param.get("choices") or []
-                try:
-                    choices_str = "|".join(str(c) for c in choices)
-                except Exception:
-                    choices_str = ""
-                display = f"{name}={choices_str}" if choices_str else name
-            else:
-                display = name
-            if param.get("required", False):
-                return f"<{display}>"
-            else:
-                return f"[{display}]"
-
-        params = " ".join([_param_display(param) for param in parameters])
-        if cmd.get("hidden"):
-            continue
-        elif cmd.get("admin"):
-            admin_help += f"- `{COMMAND_PREFIX} {cmd['name']}{f' {params}' if params else ''}`: {cmd['description']}\n"
+    def _param_display(param: dict[str, Any]) -> str:
+        name = param.get("name")
+        if param.get("type") == "choice":
+            choices = param.get("choices") or []
+            try:
+                choices_str = "|".join(str(c) for c in choices)
+            except Exception:
+                choices_str = ""
+            display = f"{name}={choices_str}" if choices_str else name
         else:
-            help += f"- `{COMMAND_PREFIX} {cmd['name']}{f' {params}' if params else ''}`: {cmd['description']}\n"
+            display = name
+        if param.get("required", False):
+            return f"<{display}>"
+        else:
+            return f"[{display}]"
+
+    def validate_commands(commands):
+        for cmd in commands:
+            if "alias_of" in cmd:
+                if "subcommands" in cmd:
+                    validate_commands(cmd["subcommands"])
+                continue
+
+            for p in cmd.get("parameters", []) or []:
+                if p.get("type") == "choice":
+                    choices = p.get("choices")
+                    if (
+                        not choices
+                        or not isinstance(choices, (list, tuple))
+                        or len(choices) == 0
+                    ):
+                        raise ValueError(
+                            f"Command '{cmd.get('name')}' parameter '{p.get('name')}' is type 'choice' but 'choices' is missing or invalid."
+                        )
+
+            parameters = cmd.get("parameters", [])
+            if "current_user" in [p.get("type") for p in parameters]:
+                cmd["parameters"] = [
+                    p for p in parameters if p.get("type") != "current_user"
+                ]
+
+            if "subcommands" in cmd:
+                validate_commands(cmd["subcommands"])
+
+    validate_commands(COMMANDS)
+
+    def get_help(commands, prefix, is_admin=False):
+        h = ""
+        for cmd in commands:
+            if cmd.get("hidden"):
+                continue
+
+            if bool(cmd.get("admin")) != is_admin:
+                if not (
+                    "subcommands" in cmd
+                    and get_help(
+                        cmd["subcommands"], f"{prefix} {cmd['name']}", is_admin
+                    )
+                ):
+                    continue
+
+            parameters = cmd.get("parameters", [])
+            params = " ".join([_param_display(param) for param in parameters])
+
+            full_command = f"{prefix} {cmd['name']}"
+
+            if "subcommands" in cmd:
+                sub_help = get_help(cmd["subcommands"], full_command, is_admin)
+                if sub_help:
+                    h += sub_help
+                if cmd.get("function") and bool(cmd.get("admin")) == is_admin:
+                    h += f"- `{full_command}{f' {params}' if params else ''}`: {cmd['description']}\n"
+            else:
+                h += f"- `{full_command}{f' {params}' if params else ''}`: {cmd['description']}\n"
+        return h
+
+    help_msg = "Available commands:\n" + get_help(COMMANDS, COMMAND_PREFIX, False)
+    admin_help_msg = get_help(COMMANDS, COMMAND_PREFIX, True)
 
     @app.command(COMMAND_PREFIX)
     async def inn_command(
@@ -468,18 +512,11 @@ def register_commands(app: AsyncApp):
         try:
             # Tokenizer that preserves Slack angle-bracket tokens (e.g. <#C123|name>, <@U123>, <mailto:...>),
             # preserves quoted strings as single tokens, and otherwise splits on whitespace.
-            #
-            # Regex groups:
-            # 1: angle-bracket tokens like <...> (no spaces inside)
-            # 2: double quoted strings (supports simple backslash escapes)
-            # 4: bare non-space token (\S+)
             token_re = re.compile(r'(<[^>\s]+>)|("([^"\\]|\\.)*")|(\S+)')
             if raw_text:
-                raw_text_str = raw_text
-                matches = list(token_re.finditer(raw_text_str))
+                matches = list(token_re.finditer(raw_text))
                 tokens = [m.group(0) for m in matches]
 
-                # Unwrap quoted strings, decoding simple escape sequences
                 def _unwrap(tok: str) -> str:
                     if tok and len(tok) >= 2 and tok[0] == '"' and tok[-1] == '"':
                         inner = tok[1:-1]
@@ -496,26 +533,66 @@ def register_commands(app: AsyncApp):
             await respond(f"Could not parse command text: {e}{ran}")
             return
 
-        command_name = tokens[0] if tokens else ""
-        # Slack may HTML-encode angle brackets in command text (e.g. "<3" -> "&lt;3")
-        command_name = (
-            command_name.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
-        )
-        for cmd in COMMANDS:
-            if cmd["name"] != command_name:
+        # Navigate through subcommands
+        cmd = None
+        tokens_consumed = 0
+
+        # Guard against infinite alias loops
+        max_resolutions = 10
+        resolutions = 0
+
+        while resolutions < max_resolutions:
+            current_commands = COMMANDS
+            tokens_consumed = 0
+            cmd = None
+
+            for i, token in enumerate(tokens):
+                normalized_token = (
+                    token.replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                    .replace("&amp;", "&")
+                )
+                found = next(
+                    (
+                        c
+                        for c in current_commands
+                        if c["name"] == normalized_token
+                        or normalized_token in c.get("aliases", [])
+                    ),
+                    None,
+                )
+
+                if found:
+                    cmd = found
+                    tokens_consumed = i + 1
+                    if "alias_of" in found:
+                        break
+                    if "subcommands" in found:
+                        current_commands = found["subcommands"]
+                    else:
+                        break
+                else:
+                    break
+
+            if cmd and "alias_of" in cmd:
+                resolutions += 1
+                alias_tokens = cmd["alias_of"].split()
+                tokens = alias_tokens + tokens[tokens_consumed:]
                 continue
 
+            break
+
+        if resolutions == max_resolutions:
+            await respond(f"Too many command aliases resolved (infinite loop?).{ran}")
+            return
+
+        if cmd and cmd.get("function"):
             if cmd.get("admin") and user_id != "U054VC2KM9P":
                 await respond(f"You do not have permission to use this command.{ran}")
                 return
 
-            parsed = tokens[1:]
+            args_tokens = tokens[tokens_consumed:]
             params = cmd.get("parameters", []) or []
-            args_tokens = parsed
-            logging.debug(
-                f"Command '{command_name}' invoked by user '{user_id}' with raw text: {raw_text}"
-            )
-            logging.debug(f"Parsed tokens: {tokens}")
 
             # If the last declared parameter is a 'string', join the remainder into one argument.
             if params and params[-1].get("type") == "string":
@@ -530,21 +607,14 @@ def register_commands(app: AsyncApp):
                 except Exception:
                     pass
                 args_tokens = first_parts + [last_string]
-                logging.debug(
-                    f"Adjusted args tokens for trailing string parameter: {args_tokens}"
-                )
 
-            # Attempt to assign tokens to params by type so optional params (like channel/user) get sensible defaults.
-            # We do this after the trailing-string adjustment above so the last string param consumes the remainder.
+            # Attempt to assign tokens to params by type
             if args_tokens and params:
                 mapped = _assign_tokens_to_params(args_tokens, params)
-                # Build an args_tokens list aligned with params; if mapped slot is None, keep None
-                # Mapped length == len(params)
                 args_tokens = [
                     mapped[i] if i < len(mapped) else None for i in range(len(params))
                 ]
             else:
-                # ensure args_tokens is indexable in the downstream loop
                 args_tokens = [None] * len(params)
 
             import inspect
@@ -559,25 +629,12 @@ def register_commands(app: AsyncApp):
                 kwargs_for_params[pname] = user_id
                 params = [p for p in params if p.get("type") != "current_user"]
 
-            # Keep special-case shimming if present (omitted here for clarity, retained behavior above if needed)
-
             for idx, param in enumerate(params):
                 pname = param.get("name")
                 ptype = param.get("type", "string")
                 default = param.get("default", None)
+                raw_val = args_tokens[idx] if idx < len(args_tokens) else default
 
-                logging.debug(
-                    f"Processing parameter '{pname}' of type '{ptype}' at position {idx}"
-                )
-
-                if idx < len(args_tokens):
-                    raw_val = args_tokens[idx]
-                else:
-                    raw_val = default
-
-                logging.debug(f"Raw value for parameter '{pname}': {raw_val}")
-
-                # Normalize missing values
                 if raw_val is None or raw_val == "":
                     value = None
                 else:
@@ -587,40 +644,23 @@ def register_commands(app: AsyncApp):
                         except Exception:
                             errors.append(f"Parameter '{pname}' must be an integer.")
                             continue
-
                     elif ptype == "user":
-                        # First, try to extract explicit Slack mention or plain ID.
                         value = None
-                        email_candidate: str | None = None
-
+                        email_candidate = None
                         if isinstance(raw_val, str):
                             raw_val_str = raw_val.strip()
-
-                            # explicit mention or plain id
                             uid = _normalize_user_token(raw_val_str)
                             if uid:
                                 value = uid
-                                logging.debug(
-                                    f"User token normalized from mention/id: {uid}"
-                                )
                             else:
-                                # mailto form: <mailto:...|...>
                                 mailto = _extract_mailto(raw_val_str)
                                 if mailto:
                                     email_candidate = mailto
-                                # bare-looking email address
                                 elif "@" in raw_val_str and _EMAIL_SIMPLE_RE.match(
                                     raw_val_str
                                 ):
                                     email_candidate = raw_val_str
-                                else:
-                                    # not an id/mention or email-looking token; leave value None and record param error below
-                                    email_candidate = None
-                        else:
-                            email_candidate = None
 
-                        # If we have an email candidate, attempt lookup. On any failure, *do not* return an error:
-                        # set the resolved user id to None and pass the email through to the handler via kwargs.
                         if email_candidate:
                             email = email_candidate
                             try:
@@ -633,91 +673,56 @@ def register_commands(app: AsyncApp):
                                 if isinstance(data, dict):
                                     user_obj = data.get("user") or {}
                                     uid = user_obj.get("id")
-                                    logging.debug(
-                                        f"Lookup by email '{email}' returned: {uid} (raw response: {data})"
-                                    )
                                     if uid and re.match(r"^[UW][A-Z0-9]+$", uid):
                                         value = uid
                                         kwargs_for_params["email"] = email
                                     else:
-                                        # Lookup didn't return an ID -> treat as unresolved but still pass email
-                                        value = None
                                         kwargs_for_params["email"] = email
-                                else:
-                                    # Unexpected response type -> treat as unresolved but pass email
-                                    logging.debug(
-                                        f"Unexpected response type for users_lookupByEmail: {resp}"
-                                    )
-                                    value = None
-                                    kwargs_for_params["email"] = email
-                            except SlackApiError as e:
-                                # On API error (not found, missing scopes, etc.), do not propagate error to caller.
-                                # Instead set user to None and pass the email through.
-                                logging.debug(
-                                    f"Slack API error looking up email '{email}': {getattr(e, 'response', str(e))}"
-                                )
-                                value = None
-                                kwargs_for_params["email"] = email
                             except Exception:
-                                logging.exception("Error looking up user by email")
-                                value = None
                                 kwargs_for_params["email"] = email
-                        # If neither uid nor email_candidate produced a value, and we still don't have a value,
-                        # treat it as an unresolved token and allow the handler to receive None.
-                        # (This preserves backwards compatibility where handlers can accept a `user` of None.)
-                        # No error is appended for email lookup failures per the requested behavior.
 
                     elif ptype == "channel":
                         if not isinstance(raw_val, str):
                             errors.append(
-                                f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C0266FRGT>)."
+                                f"Parameter '{pname}' must be a channel mention or ID."
                             )
                             continue
                         chan = _normalize_channel_token(raw_val)
                         if chan:
                             value = chan
                         else:
-                            # Token didn't look like a channel id/mention; attempt to resolve a bare channel name.
-                            # Accept forms like '#name' or 'name' and try to find the channel id via the Web API.
                             try:
-                                channel_lookup_name = raw_val.strip()
                                 resolved = await _find_channel_id_by_name(
-                                    client, channel_lookup_name
+                                    client, raw_val.strip()
                                 )
                                 if resolved:
                                     value = resolved
                                 else:
                                     errors.append(
-                                        f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C06R5NKVCG5>) or a channel name."
+                                        f"Parameter '{pname}' must be a channel mention, ID or name."
                                     )
                                     continue
                             except Exception:
-                                logging.exception("Error resolving channel name")
                                 errors.append(
-                                    f"Parameter '{pname}' must be a channel mention or ID (e.g. <#C06R5NKVCG5>)."
+                                    f"Parameter '{pname}' must be a channel mention or ID."
                                 )
                                 continue
 
                     elif ptype == "choice":
                         choices = param.get("choices")
-                        if not choices or not isinstance(choices, (list, tuple)):
+                        if not choices:
                             errors.append(
-                                f"Parameter '{pname}' is a choice type but no choices were defined."
+                                f"Parameter '{pname}' is a choice type but no choices defined."
                             )
                             continue
-                        if not isinstance(raw_val, str):
-                            errors.append(
-                                f"Parameter '{pname}' must be one of: {', '.join(map(str, choices))}."
-                            )
-                            continue
-                        try:
-                            lower_map = {str(c).lower(): c for c in choices}
-                        except Exception:
-                            errors.append(
-                                f"Parameter '{pname}' must be one of: {', '.join(map(str, choices))}."
-                            )
-                            continue
-                        match = lower_map.get(raw_val.lower())
+                        match = next(
+                            (
+                                c
+                                for c in choices
+                                if str(c).lower() == str(raw_val).lower()
+                            ),
+                            None,
+                        )
                         if match is None:
                             errors.append(
                                 f"Parameter '{pname}' must be one of: {', '.join(map(str, choices))}."
@@ -726,10 +731,9 @@ def register_commands(app: AsyncApp):
                         value = match
 
                     elif ptype == "subteam":
-                        # subteam (user group) token normalization
                         if not isinstance(raw_val, str):
                             errors.append(
-                                f"Parameter '{pname}' must be a usergroup mention or ID (e.g. <!subteam^S12345|@groupname> or S12345)."
+                                f"Parameter '{pname}' must be a usergroup mention or ID."
                             )
                             continue
                         s_id = _normalize_subteam_token(raw_val.strip())
@@ -737,12 +741,10 @@ def register_commands(app: AsyncApp):
                             value = s_id
                         else:
                             errors.append(
-                                f"Parameter '{pname}' must be a usergroup mention or ID (e.g. <!subteam^S12345|@groupname> or S12345)."
+                                f"Parameter '{pname}' must be a usergroup mention or ID."
                             )
                             continue
-
                     else:
-                        # string or unknown types => treat as string and decode escape sequences
                         if isinstance(raw_val, str):
                             try:
                                 value = codecs.decode(raw_val, "unicode_escape")
@@ -759,15 +761,7 @@ def register_commands(app: AsyncApp):
                 await respond("; ".join(errors) + ran)
                 return
 
-            # Prepare handler kwargs
             handler = cmd["function"]
-
-            if not handler:
-                await respond(
-                    f"The `{command_name}` command is not yet implemented.{ran}"
-                )
-                return
-
             sig = inspect.signature(handler)
             handler_kwargs: dict[str, Any] = {
                 "ack": ack,
@@ -793,9 +787,8 @@ def register_commands(app: AsyncApp):
             return
 
         is_admin = user_id == "U054VC2KM9P"
-        final_help = help
-        if is_admin:
-            final_help += "\n*Admin Commands:*\n" + admin_help
+        final_help = help_msg
+        if is_admin and admin_help_msg:
+            final_help += "\n*Admin Commands:*\n" + admin_help_msg
 
-        msg = final_help + ran
-        await respond(msg)
+        await respond(final_help + ran)
