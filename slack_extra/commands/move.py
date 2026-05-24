@@ -92,8 +92,10 @@ async def move_handler(
                     messages=[f"```{tb_str}```"],
                 )
 
+        amount = len(channel_members)
+
         await send_heartbeat(
-            f"<@{performer}> - {len(channel_members)} members fetched from <#{start}>! Adding to <#{end}>"
+            f"<@{performer}> - {amount} members fetched from <#{start}>! Adding to <#{end}>"
         )
         if exclude:
             ids = re.findall(r"<@([^|]+)\|", exclude)
@@ -125,9 +127,7 @@ async def move_handler(
                     messages=[f"```{tb_str}```"],
                 )
 
-        await respond(
-            f"Moved {len(channel_members)} members from <#{start}> to <#{end}>"
-        )
+        await respond(f"Moved {amount} members from <#{start}> to <#{end}>")
         return
 
     view = (
