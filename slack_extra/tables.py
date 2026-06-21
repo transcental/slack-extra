@@ -74,3 +74,11 @@ class MigrationChannel(Table):
     id = Serial(primary_key=True)
     channel_id = Varchar(unique=True)
     config = ForeignKey(references=MigrationConfig)
+
+
+class UserSettings(Table):
+    id = Serial(primary_key=True)
+    user_id = Varchar(length=20, unique=True, index=True)
+    manual_move_opt_out = Boolean(default=False)
+    auto_move_opt_out = Boolean(default=False)
+    created_at = Timestamptz()

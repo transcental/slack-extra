@@ -15,6 +15,8 @@ from slack_extra.commands.channel.move import move_handler
 from slack_extra.commands.group import group_handler
 from slack_extra.commands.info import info_handler
 from slack_extra.commands.love import love_handler
+from slack_extra.commands.settings import settings_handler
+from slack_extra.commands.settings import settings_move_handler
 from slack_extra.commands.spoiler import spoiler_handler
 from slack_extra.config import config
 from slack_extra.utils.logging import send_heartbeat
@@ -134,6 +136,34 @@ COMMANDS = [
                     },
                 ],
             },
+        ],
+    },
+    {
+        "name": "settings",
+        "description": "Manage your Slack Extra settings",
+        "function": settings_handler,
+        "subcommands": [
+            {
+                "name": "move",
+                "description": "Change your move settings",
+                "function": settings_move_handler,
+                "parameters": [
+                    {
+                        "name": "move_type",
+                        "type": "choice",
+                        "choices": ["manual", "auto"],
+                        "description": "Move type to configure",
+                        "required": True,
+                    },
+                    {
+                        "name": "state",
+                        "type": "choice",
+                        "choices": ["on", "off"],
+                        "description": "Turn this move type on or off",
+                        "required": True,
+                    },
+                ],
+            }
         ],
     },
     {
