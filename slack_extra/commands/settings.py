@@ -14,12 +14,12 @@ from slack_extra.preferences import set_move_enabled
 MANUAL_MOVE_OPTION = Option(
     text="Manual moves",
     value="manual",
-    description="Allow bulk moves to add you to channels.",
+    description="Allow being added to a single channel as a one off by a channel manager running a command.",
 )
 AUTO_MOVE_OPTION = Option(
     text="Automatic moves",
     value="auto",
-    description="Allow auto moves to add you to related channels.",
+    description="Allow being automatically added to related channels (eg. YSWS bulletin, help & chat)",
 )
 
 
@@ -51,10 +51,7 @@ async def settings_handler(
         .title("Settings")
         .add_block(Section(text="Choose how Slack Extra can add you to channels."))
         .add_block(
-            Input()
-            .label("Move")
-            .element(move_checkboxes)
-            .block_id("move_settings")
+            Input().label("Move").element(move_checkboxes).block_id("move_settings")
         )
         .submit("Save")
         .close("Cancel")
