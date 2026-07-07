@@ -12,6 +12,7 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.config import config
+from slack_extra.tables import UserSettings
 from slack_extra.utils.logging import send_heartbeat
 from slack_extra.utils.slack import is_channel_manager
 
@@ -102,6 +103,19 @@ async def move_handler(
             await send_heartbeat(f"Excluding users: `{ids}`")
             channel_members = [m for m in channel_members if m not in ids]
 
+        if channel_members:
+            opt_outs = await UserSettings.select(UserSettings.user_id).where(
+                UserSettings.user_id.is_in(channel_members),
+                UserSettings.manual_move_opt_out.eq(True),
+            )
+            opted_out_ids = {row["user_id"] for row in opt_outs}
+            if opted_out_ids:
+                await send_heartbeat(
+                    f"Skipping people who have opted out: `{sorted(opted_out_ids)}`"
+                )
+                channel_members = [m for m in channel_members if m not in opted_out_ids]
+
+        move_amount = len(channel_members)
         while len(channel_members) > 0:
             try:
                 users = channel_members[:100]
@@ -127,7 +141,7 @@ async def move_handler(
                     messages=[f"```{tb_str}```"],
                 )
 
-        await respond(f"Moved {amount} members from <#{start}> to <#{end}>")
+        await respond(f"Moved {move_amount} members from <#{start}> to <#{end}>")
         return
 
     view = (

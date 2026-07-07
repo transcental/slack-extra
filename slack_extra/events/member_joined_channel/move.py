@@ -2,6 +2,7 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from slack_extra.config import config
+from slack_extra.preferences import is_move_opted_out
 from slack_extra.tables import MigrationChannel
 from slack_extra.utils.logging import send_heartbeat
 
@@ -9,6 +10,9 @@ from slack_extra.utils.logging import send_heartbeat
 async def mover_handler(body: dict, event: dict, client: AsyncWebClient):
     channel_id = event["channel"]
     user_id = event["user"]
+
+    if await is_move_opted_out(user_id, "auto"):
+        return
 
     migration_channel = await MigrationChannel.objects().where(
         MigrationChannel.channel_id == channel_id
