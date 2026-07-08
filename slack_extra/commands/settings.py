@@ -14,12 +14,12 @@ from slack_extra.preferences import set_move_enabled
 MANUAL_MOVE_OPTION = Option(
     text="Manual moves",
     value="manual",
-    description="Allow being added to a single channel as a one off by a channel manager running a command.",
+    description="Allow being added to single channels by channel managers",
 )
 AUTO_MOVE_OPTION = Option(
     text="Automatic moves",
     value="auto",
-    description="Allow being automatically added to related channels (eg. YSWS bulletin, help & chat)",
+    description="Allow being automatically added to multiple channels (eg. YSWS channels)",
 )
 
 
