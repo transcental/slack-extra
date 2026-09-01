@@ -508,6 +508,10 @@ async def create_spoiler_handler(ack: AsyncAck, body: dict, client: AsyncWebClie
         text="spoiler :hehe:",
         username=display_name,
         icon_url=pfp,
+        metadata={
+            "event_type": "spoiler",
+            "event_payload": {"poster": user_id},
+        },
         unfurl_media=True,
         unfurl_links=True,
         thread_ts=thread_ts,
