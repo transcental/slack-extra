@@ -78,59 +78,76 @@ async def info_handler(
                 res += f"- :slack: *Slack Email:* {email_addr}\n"
                 res += f"- :slack: *Slack Username:* {username}\n"
                 res += f"- :slack: *Slack ID:* {user}\n"
-
-                # Fetch Hackatime trust
-                joe = JOE_ENDPOINT + user
-                try:
-                    async with env.http.get(
-                        HACKATIME_ENDPOINT.replace("slackid", user)
-                    ) as ht_resp:
-                        if ht_resp.status == 200:
-                            ht_data = await ht_resp.json()
-                            trust_factor = "Unknown"
-                            colour = ht_data.get("trust_level")
-                            value = ht_data.get("trust_value")
-                            match colour:
-                                case "green":
-                                    trust_factor = (
-                                        f":large_green_circle: Trusted ({value})"
-                                    )
-                                case "blue":
-                                    trust_factor = (
-                                        f":large_blue_circle: Normal ({value})"
-                                    )
-                                case "yellow":
-                                    trust_factor = (
-                                        f":large_yellow_circle: Untrusted ({value})"
-                                    )
-                                case "red":
-                                    trust_factor = f":red_circle: Banned ({value})"
-                                case _:
-                                    trust_factor = ":question: Unknown"
-                            res += f"- :clock1: *Hackatime Trust Factor:* {trust_factor} _(<{joe}|Joe>)_\n"
-                        else:
-                            res += f"- :clock1: *Hackatime Trust Factor:* N/A _(<{joe}|Joe>)_\n"
-                except Exception:
-                    res += "- :clock1: *Hackatime Trust Factor:* N/A\n"
             else:
                 res += "- Could not fetch user info from Slack API.\n"
 
-        if email and user:
-            async with env.http.get(
-                IDENTITY_ENDPOINT, params={"slack_id": user}
-            ) as id_resp:
-                if id_resp.status == 200:
-                    id_data = await id_resp.json()
-                    res += f"- :bust_in_silhouette: *IDV:* {id_data.get('result').replace('_', ' ').capitalize()}\n"
+            # Fetch Hackatime trust
+            joe = JOE_ENDPOINT + user
+            try:
+                async with env.http.get(
+                    HACKATIME_ENDPOINT.replace("slackid", user)
+                ) as ht_resp:
+                    if ht_resp.status == 200:
+                        ht_data = await ht_resp.json()
+                        trust_factor = "Unknown"
+                        colour = ht_data.get("trust_level")
+                        value = ht_data.get("trust_value")
+                        match colour:
+                            case "green":
+                                trust_factor = (
+                                    f":large_green_circle: Trusted ({value})"
+                                )
+                            case "blue":
+                                trust_factor = (
+                                    f":large_blue_circle: Normal ({value})"
+                                )
+                            case "yellow":
+                                trust_factor = (
+                                    f":large_yellow_circle: Untrusted ({value})"
+                                )
+                            case "red":
+                                trust_factor = f":red_circle: Banned ({value})"
+                            case _:
+                                trust_factor = ":question: Unknown"
+                        res += f"- :clock1: *Hackatime Trust Factor:* {trust_factor} _(<{joe}|Joe>)_\n"
+                    else:
+                        res += f"- :clock1: *Hackatime Trust Factor:* N/A _(<{joe}|Joe>)_\n"
+            except Exception:
+                res += "- :clock1: *Hackatime Trust Factor:* N/A\n"
+
+            # Fetch IDV Status
+            if email:
+                async with env.http.get(
+                    IDENTITY_ENDPOINT, params={"slack_id": user}
+                ) as id_resp:
+                    if id_resp.status == 200:
+                        id_data = await id_resp.json()
+                        res += f"- :bust_in_silhouette: *IDV:* {id_data.get('result').replace('_', ' ').capitalize()}\n"
+                    else:
+                        async with env.http.get(
+                            IDENTITY_ENDPOINT, params={"email": email}
+                        ) as id_resp:
+                            if id_resp.status == 200:
+                                id_data = await id_resp.json()
+                                res += f"- :bust_in_silhouette: *IDV:* {id_data.get('result').replace('_', ' ').capitalize()}\n"
+                            else:
+                                res += "- :bust_in_silhouette: *IDV:- N/A\n"
+            
+            # Fetch NDA Status
+            try:
+                async with env.http.get(
+                    NDA_ENDPOINT + user
+                ) as ht_resp:
+                if ht_resp.status == 200:
+                    ht_data = await ht_resp.json()
+                    status = ht_data.get("status")
+                    signature_type = ht_data.get("signature_type")
+
+                    res += f"- :tw_shield: *NDA Status:* {status.replace("_", " ").title()}{f" ({signature_type})" if signature_type else ""}"
                 else:
-                    async with env.http.get(
-                        IDENTITY_ENDPOINT, params={"email": email}
-                    ) as id_resp:
-                        if id_resp.status == 200:
-                            id_data = await id_resp.json()
-                            res += f"- :bust_in_silhouette: *IDV:* {id_data.get('result').replace('_', ' ').capitalize()}\n"
-                        else:
-                            res += "- :bust_in_silhouette: *IDV:- N/A\n"
+                    res += f"- :tw_shield: *NDA Status: Unknown*"
+            except Exception:
+                res += f"- :tw_shield: *NDA Status: Unknown*"
 
         if user:
             # https://nda.hackclub.com/api/v1/docs - public, keyed on Slack ID
