@@ -33,7 +33,7 @@
     },
     "oauth_config": {
         "redirect_urls": [
-            "https://cassiopeia3000.transcental.dev/slack/oauth_redirect"
+            "https://slackextra.transcental.dev/slack/oauth_redirect"
         ],
         "scopes": {
             "user": [
