@@ -1,5 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
+from urllib.parse import urlsplit
 
 from slack_bolt.async_app import AsyncAck
 from slack_sdk.web.async_client import AsyncWebClient
@@ -440,6 +441,17 @@ async def create_spoiler_handler(ack: AsyncAck, body: dict, client: AsyncWebClie
     files = state["spoiler_files"]["spoiler_files"]["files"]
     files_to_upload = []
     for f in files:
+        url = urlsplit(f["url_private_download"])
+        host = url.hostname or ""
+        if url.scheme != "https" or not (
+            host == "slack.com" or host.endswith(".slack.com")
+        ):
+            await client.chat_postEphemeral(
+                channel=channel,
+                user=body["user"]["id"],
+                text=f"i couldn't download the file {f['name']} :(\nplease try uploading it again!",
+            )
+            return
         async with env.http.get(
             f["url_private_download"],
             headers={"Authorization": f"Bearer {config.slack.bot_token}"},
